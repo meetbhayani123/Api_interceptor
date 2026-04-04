@@ -1,3 +1,4 @@
+// ─── Odds Entry (legacy book locking) ───
 export interface IOddsEntry {
   timestamp: Date;
   teamA: number;
@@ -6,12 +7,15 @@ export interface IOddsEntry {
   locked: boolean;
 }
 
+// ─── Team Odds Snapshot ───
 export interface ITeamOdds {
-  odds: [number, number];
-  pricing: [number, number];
+  odds: [number, number];   // [back, lay]
+  pricing: [number, number]; // [back, lay]
 }
 
+// ─── Odds Snapshot Document ───
 export interface IOddsSnapshot {
+  _id?: string;
   matchId: string;
   sequenceId: number;
   signature: string;
@@ -20,22 +24,32 @@ export interface IOddsSnapshot {
   teamB: ITeamOdds;
 }
 
+// ─── Match Status ───
+export type MatchStatus = 'upcoming' | 'running' | 'completed';
+
+// ─── Match Document ───
 export interface IMatch {
-  id?: string;
+  _id?: string;
   eventId?: string;
   marketId?: string;
   name: string;
   teamA?: string;
   teamB?: string;
   startTime: Date;
-  status: 'upcoming' | 'live' | 'completed';
+  status: MatchStatus;
   oddsHistory: IOddsEntry[];
-  snapshots?: IOddsSnapshot[];
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
-export interface IFinalBookResult {
-  profitTeamA: string;
-  profitTeamB: string;
-  profitDraw?: string;
-  isLocked: boolean;
+// ─── Book Result (matches calculateNetBook output) ───
+export interface IBookResult {
+  teamA_PL: number;
+  teamB_PL: number;
+}
+
+// ─── Match Detail (API response with snapshots + book) ───
+export interface IMatchDetail extends IMatch {
+  snapshots: IOddsSnapshot[];
+  finalBook?: IBookResult;
 }
