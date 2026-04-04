@@ -33,7 +33,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Matches List */}
-        <div className="lg:col-span-8 bg-slate-800/40 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-xl flex flex-col overflow-hidden max-h-[85vh]">
+        <div className="lg:col-span-8 bg-slate-800/40 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-xl flex flex-col overflow-hidden lg:max-h-[85vh]">
           <div className="p-5 border-b border-slate-700/50 bg-slate-800/60 flex justify-between items-center">
             <h2 className="text-lg font-bold flex items-center gap-2">
               <svg className="w-5 h-5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -46,7 +46,7 @@ export default function DashboardPage() {
             </span>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-5 space-y-3 custom-scrollbar">
+          <div className="flex-1 lg:overflow-y-auto p-5 space-y-3 custom-scrollbar">
             {matches.length === 0 ? (
               <div className="flex flex-col items-center justify-center text-slate-500 gap-3 py-16">
                 <svg className="w-12 h-12 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">

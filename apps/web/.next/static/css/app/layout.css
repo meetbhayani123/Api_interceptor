@@ -1603,12 +1603,20 @@ body {
     grid-column: span 8 / span 8;
   }
 
+  .lg\:max-h-\[85vh\] {
+    max-height: 85vh;
+  }
+
   .lg\:grid-cols-12 {
     grid-template-columns: repeat(12, minmax(0, 1fr));
   }
 
   .lg\:grid-cols-2 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .lg\:overflow-y-auto {
+    overflow-y: auto;
   }
 
   .lg\:p-8 {
