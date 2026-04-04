@@ -16,8 +16,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className="min-h-screen">
-        <Sidebar />
-        <div className="ml-[72px] min-h-screen flex flex-col">
+        <div className="min-h-screen flex flex-col">
           <Header />
           <main className="flex-1 relative overflow-hidden">
             {/* Background decorations */}

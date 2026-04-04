@@ -550,6 +550,12 @@ video {
 .top-\[-10\%\] {
   top: -10%;
 }
+.right-2 {
+  right: 0.5rem;
+}
+.top-2 {
+  top: 0.5rem;
+}
 .z-10 {
   z-index: 10;
 }
@@ -589,9 +595,6 @@ video {
 }
 .ml-1 {
   margin-left: 0.25rem;
-}
-.ml-\[72px\] {
-  margin-left: 72px;
 }
 .mr-1\.5 {
   margin-right: 0.375rem;
@@ -635,6 +638,9 @@ video {
 .h-2 {
   height: 0.5rem;
 }
+.h-3 {
+  height: 0.75rem;
+}
 .h-3\.5 {
   height: 0.875rem;
 }
@@ -662,8 +668,8 @@ video {
 .h-screen {
   height: 100vh;
 }
-.max-h-\[85vh\] {
-  max-height: 85vh;
+.max-h-\[80vh\] {
+  max-height: 80vh;
 }
 .min-h-\[60vh\] {
   min-height: 60vh;
@@ -688,6 +694,9 @@ video {
 }
 .w-2 {
   width: 0.5rem;
+}
+.w-3 {
+  width: 0.75rem;
 }
 .w-3\.5 {
   width: 0.875rem;
@@ -722,14 +731,17 @@ video {
 .w-full {
   width: 100%;
 }
-.min-w-0 {
-  min-width: 0px;
-}
 .min-w-\[180px\] {
   min-width: 180px;
 }
+.max-w-4xl {
+  max-width: 56rem;
+}
 .max-w-7xl {
   max-width: 80rem;
+}
+.max-w-\[80\%\] {
+  max-width: 80%;
 }
 .max-w-md {
   max-width: 28rem;
@@ -790,9 +802,6 @@ video {
 .items-start {
   align-items: flex-start;
 }
-.items-end {
-  align-items: flex-end;
-}
 .items-center {
   align-items: center;
 }
@@ -823,18 +832,10 @@ video {
 .gap-6 {
   gap: 1.5rem;
 }
-.gap-8 {
-  gap: 2rem;
-}
 .space-y-2 > :not([hidden]) ~ :not([hidden]) {
   --tw-space-y-reverse: 0;
   margin-top: calc(0.5rem * calc(1 - var(--tw-space-y-reverse)));
   margin-bottom: calc(0.5rem * var(--tw-space-y-reverse));
-}
-.space-y-3 > :not([hidden]) ~ :not([hidden]) {
-  --tw-space-y-reverse: 0;
-  margin-top: calc(0.75rem * calc(1 - var(--tw-space-y-reverse)));
-  margin-bottom: calc(0.75rem * var(--tw-space-y-reverse));
 }
 .space-y-4 > :not([hidden]) ~ :not([hidden]) {
   --tw-space-y-reverse: 0;
@@ -872,6 +873,9 @@ video {
 .rounded-lg {
   border-radius: 0.5rem;
 }
+.rounded-md {
+  border-radius: 0.375rem;
+}
 .rounded-xl {
   border-radius: 0.75rem;
 }
@@ -882,8 +886,8 @@ video {
 .rounded-bl-\[100px\] {
   border-bottom-left-radius: 100px;
 }
-.rounded-bl-\[40px\] {
-  border-bottom-left-radius: 40px;
+.rounded-bl-\[30px\] {
+  border-bottom-left-radius: 30px;
 }
 .border {
   border-width: 1px;
@@ -1091,13 +1095,12 @@ video {
 .p-6 {
   padding: 1.5rem;
 }
+.p-1\.5 {
+  padding: 0.375rem;
+}
 .px-2 {
   padding-left: 0.5rem;
   padding-right: 0.5rem;
-}
-.px-2\.5 {
-  padding-left: 0.625rem;
-  padding-right: 0.625rem;
 }
 .px-3 {
   padding-left: 0.75rem;
@@ -1115,6 +1118,10 @@ video {
   padding-left: 1.5rem;
   padding-right: 1.5rem;
 }
+.py-0\.5 {
+  padding-top: 0.125rem;
+  padding-bottom: 0.125rem;
+}
 .py-1 {
   padding-top: 0.25rem;
   padding-bottom: 0.25rem;
@@ -1123,9 +1130,9 @@ video {
   padding-top: 0.375rem;
   padding-bottom: 0.375rem;
 }
-.py-16 {
-  padding-top: 4rem;
-  padding-bottom: 4rem;
+.py-10 {
+  padding-top: 2.5rem;
+  padding-bottom: 2.5rem;
 }
 .py-2\.5 {
   padding-top: 0.625rem;
@@ -1151,11 +1158,11 @@ video {
 .pl-8 {
   padding-left: 2rem;
 }
-.pr-10 {
-  padding-right: 2.5rem;
-}
 .pr-4 {
   padding-right: 1rem;
+}
+.pr-8 {
+  padding-right: 2rem;
 }
 .text-center {
   text-align: center;
@@ -1170,6 +1177,9 @@ video {
 .text-4xl {
   font-size: 2.25rem;
   line-height: 2.5rem;
+}
+.text-\[10px\] {
+  font-size: 10px;
 }
 .text-lg {
   font-size: 1.125rem;
@@ -1562,8 +1572,22 @@ body {
 }
 @media (min-width: 640px) {
 
-  .sm\:flex-row {
-    flex-direction: row;
+  .sm\:p-4 {
+    padding: 1rem;
+  }
+
+  .sm\:p-6 {
+    padding: 1.5rem;
+  }
+
+  .sm\:text-base {
+    font-size: 1rem;
+    line-height: 1.5rem;
+  }
+
+  .sm\:text-xs {
+    font-size: 0.75rem;
+    line-height: 1rem;
   }
 }
 @media (min-width: 768px) {
@@ -1595,28 +1619,8 @@ body {
 }
 @media (min-width: 1024px) {
 
-  .lg\:col-span-4 {
-    grid-column: span 4 / span 4;
-  }
-
-  .lg\:col-span-8 {
-    grid-column: span 8 / span 8;
-  }
-
-  .lg\:max-h-\[85vh\] {
-    max-height: 85vh;
-  }
-
-  .lg\:grid-cols-12 {
-    grid-template-columns: repeat(12, minmax(0, 1fr));
-  }
-
   .lg\:grid-cols-2 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .lg\:overflow-y-auto {
-    overflow-y: auto;
   }
 
   .lg\:p-8 {
