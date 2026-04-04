@@ -1,0 +1,19 @@
+{
+  "name": "@repo/utils",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "lint": "eslint src/"
+  },
+  "dependencies": {
+    "decimal.js": "^10.4.3",
+    "@repo/types": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "latest",
+    "@repo/config": "workspace:*"
+  }
+}
