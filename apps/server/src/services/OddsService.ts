@@ -110,6 +110,26 @@ export class OddsService {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
+  private async readJsonResponse<T>(response: Response, context: string): Promise<T> {
+    const text = await response.text();
+
+    try {
+      return JSON.parse(text) as T;
+    } catch {
+      const contentType = response.headers.get('content-type') || 'unknown';
+      console.error(`[OddsService] ${context} returned non-JSON response`, {
+        status: response.status,
+        statusText: response.statusText,
+        contentType,
+        body: text,
+      });
+
+      throw new Error(
+        `${context} returned non-JSON response (${response.status} ${response.statusText}, ${contentType}): ${text}`
+      );
+    }
+  }
+
   /**
    * getEventDetails(eventId) -> Returns Teams and Market ID.
    */
@@ -130,13 +150,7 @@ export class OddsService {
         body: ''
       });
 
-      const text = await response.text();
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch (err) {
-        throw new Error('Invalid JSON response from server: ' + text.substring(0, 100));
-      }
+      const data = await this.readJsonResponse<any>(response, `getEventDetails(${eventId})`);
 
       const runners = data.data?.event?.match_odds?.runners || data.match_odds?.runners || [];
 
@@ -195,12 +209,7 @@ export class OddsService {
         body: ''
       });
 
-      const text = await response.text();
-      try {
-        return JSON.parse(text);
-      } catch (err) {
-        throw new Error('Invalid JSON response from server: ' + text.substring(0, 100));
-      }
+      return await this.readJsonResponse<any>(response, `getMarketOdds(${marketId})`);
     } catch (error) {
       console.error('OddsService: Error fetching market odds:', error);
       throw error;
@@ -228,13 +237,7 @@ export class OddsService {
         body: new URLSearchParams({ 'market_ids[]': marketId }).toString()
       });
 
-      const text = await response.text();
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch (err) {
-        throw new Error('Invalid JSON snapshot: ' + text.substring(0, 100));
-      }
+      const data = await this.readJsonResponse<any>(response, `getSnapshotData(${marketId})`);
 
       if (!Array.isArray(data) || data.length === 0) {
         throw new Error('No data found for marketId snapshot');
