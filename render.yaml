@@ -27,3 +27,5 @@ services:
         sync: false
       - key: CORS_ORIGIN
         sync: false          # Set to your Vercel frontend URL after deploying web
+      - key: SCRAPER_API_KEY
+        sync: false          # OPTIONAL: Get from https://www.scraperapi.com (free tier available)

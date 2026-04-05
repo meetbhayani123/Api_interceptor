@@ -1,9 +1,32 @@
 export class OddsService {
+  private scraperApiKey = process.env.SCRAPER_API_KEY;
+  
+  // Rotate through multiple user agents
+  private userAgents = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) AppleWebKit/537.36 (KHTML, like Gecko) Firefox/123.0',
+  ];
+
+  // Rotate through realistic residential IPs
+  private residentialIps = [
+    '203.0.113.45',
+    '198.51.100.78',
+    '192.0.2.112',
+    '14.139.60.10',
+    '203.112.45.89',
+  ];
+
   // Master set of realistic browser headers to bypass strict CDNs and WAFs
   private get defaultHeaders() {
+    const randomUserAgent = this.userAgents[Math.floor(Math.random() * this.userAgents.length)];
+    const randomIp = this.residentialIps[Math.floor(Math.random() * this.residentialIps.length)];
+    
     return {
       'accept': 'application/json, text/plain, */*',
       'accept-language': 'en-GB,en-US;q=0.9,en;q=0.8',
+      'accept-encoding': 'gzip, deflate, br',
       'origin': 'https://www.11xplay.pink',
       'referer': 'https://www.11xplay.pink/',
       'priority': 'u=1, i',
@@ -13,15 +36,84 @@ export class OddsService {
       'sec-fetch-dest': 'empty',
       'sec-fetch-mode': 'cors',
       'sec-fetch-site': 'same-site',
-      'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-      // Spoof residential IP addresses to bypass Cloudflare/WAF block on Render datacenter IPs
-      'x-forwarded-for': `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
-      'client-ip': '14.139.60.10',
-      'true-client-ip': '14.139.60.10',
-      'x-real-ip': '14.139.60.10',
+      'user-agent': randomUserAgent,
+      'x-forwarded-for': randomIp,
+      'client-ip': randomIp,
+      'true-client-ip': randomIp,
+      'x-real-ip': randomIp,
       'cache-control': 'no-cache',
-      'pragma': 'no-cache'
+      'pragma': 'no-cache',
+      'connection': 'keep-alive',
+      'upgrade-insecure-requests': '1',
     };
+  }
+
+  /**
+   * Fetch with retry logic and optional proxy bypass
+   */
+  private async fetchWithRetry(
+    url: string,
+    options: RequestInit,
+    maxRetries: number = 3
+  ): Promise<Response> {
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        // If ScraperAPI key is available and this is an attempt retry, use proxy
+        if (attempt > 0 && this.scraperApiKey) {
+          const proxyUrl = `http://api.scraperapi.com?api_key=${this.scraperApiKey}&url=${encodeURIComponent(url)}`;
+          console.log(`[OddsService] Attempt ${attempt + 1}: Using proxy for ${url}`);
+          
+          const response = await fetch(proxyUrl, {
+            method: 'GET', // ScraperAPI prefers GET
+            headers: {
+              'Accept': 'application/json',
+              'User-Agent': this.userAgents[Math.floor(Math.random() * this.userAgents.length)],
+            },
+          });
+          return response;
+        }
+
+        // Direct fetch with fresh headers each attempt
+        const freshOptions = {
+          ...options,
+          headers: { ...this.defaultHeaders, ...(options.headers || {}) }
+        };
+
+        console.log(`[OddsService] Attempt ${attempt + 1}: Direct request to ${url}`);
+        const response = await fetch(url, freshOptions);
+
+        // If we get a successful JSON response, return immediately
+        if (response.ok || response.status === 200) {
+          return response;
+        }
+
+        // If we get 403/429 (blocked), retry
+        if (response.status === 403 || response.status === 429) {
+          lastError = new Error(`WAF blocked (${response.status}). Retrying...`);
+          console.warn(lastError.message);
+          // Wait before retry (exponential backoff)
+          await this.delay(1000 * Math.pow(2, attempt));
+          continue;
+        }
+
+        return response;
+      } catch (error) {
+        lastError = error as Error;
+        console.error(`[OddsService] Attempt ${attempt + 1} failed:`, lastError.message);
+        
+        if (attempt < maxRetries - 1) {
+          await this.delay(1000 * Math.pow(2, attempt));
+        }
+      }
+    }
+
+    throw lastError || new Error('All retry attempts failed');
+  }
+
+  private async delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   /**
@@ -35,13 +127,11 @@ export class OddsService {
     const url = `https://api.11xplay.pink/api/guest/event/${eventId}`;
 
     try {
-      const response = await fetch(url, {
+      const response = await this.fetchWithRetry(url, {
         method: 'POST',
-        headers: { ...this.defaultHeaders, 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json' },
         body: '{}'
       });
-
-      console.log("response=====================================", response)
 
       const text = await response.text();
       let data;
@@ -99,11 +189,12 @@ export class OddsService {
     const url = `https://api.11xplay.pink/api/guest/market/${marketId}`;
 
     try {
-      const response = await fetch(url, {
+      const response = await this.fetchWithRetry(url, {
         method: 'POST',
-        headers: { ...this.defaultHeaders, 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json' },
         body: '{}'
       });
+
       const text = await response.text();
       try {
         return JSON.parse(text);
@@ -127,12 +218,10 @@ export class OddsService {
     const url = 'https://odds.o11xplay.com/ws/getMarketDataNew';
 
     try {
-      const response = await fetch(url, {
+      const response = await this.fetchWithRetry(url, {
         method: 'POST',
         headers: {
-          ...this.defaultHeaders,
           'content-type': 'application/x-www-form-urlencoded',
-          // Override origins specifically for the odds socket endpoint
           'origin': 'https://11xplay.pink',
           'referer': 'https://11xplay.pink/'
         },
