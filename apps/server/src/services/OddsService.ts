@@ -1,19 +1,28 @@
 export class OddsService {
   // Master set of realistic browser headers to bypass strict CDNs and WAFs
-  private readonly defaultHeaders = {
-    'accept': 'application/json, text/plain, */*',
-    'accept-language': 'en-GB,en-US;q=0.9,en;q=0.8',
-    'origin': 'https://www.11xplay.pink',
-    'referer': 'https://www.11xplay.pink/',
-    'priority': 'u=1, i',
-    'sec-ch-ua': '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
-    'sec-ch-ua-mobile': '?0',
-    'sec-ch-ua-platform': '"Windows"',
-    'sec-fetch-dest': 'empty',
-    'sec-fetch-mode': 'cors',
-    'sec-fetch-site': 'same-site',
-    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
-  };
+  private get defaultHeaders() {
+    return {
+      'accept': 'application/json, text/plain, */*',
+      'accept-language': 'en-GB,en-US;q=0.9,en;q=0.8',
+      'origin': 'https://www.11xplay.pink',
+      'referer': 'https://www.11xplay.pink/',
+      'priority': 'u=1, i',
+      'sec-ch-ua': '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
+      'sec-ch-ua-mobile': '?0',
+      'sec-ch-ua-platform': '"Windows"',
+      'sec-fetch-dest': 'empty',
+      'sec-fetch-mode': 'cors',
+      'sec-fetch-site': 'same-site',
+      'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      // Spoof residential IP addresses to bypass Cloudflare/WAF block on Render datacenter IPs
+      'x-forwarded-for': `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
+      'client-ip': '14.139.60.10',
+      'true-client-ip': '14.139.60.10',
+      'x-real-ip': '14.139.60.10',
+      'cache-control': 'no-cache',
+      'pragma': 'no-cache'
+    };
+  }
 
   /**
    * getEventDetails(eventId) -> Returns Teams and Market ID.
@@ -31,6 +40,8 @@ export class OddsService {
         headers: { ...this.defaultHeaders, 'content-type': 'application/json' },
         body: '{}'
       });
+
+      console.log("response=====================================", response)
 
       const text = await response.text();
       let data;
