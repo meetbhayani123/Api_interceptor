@@ -1,0 +1,29 @@
+services:
+  # ─── Backend: Express + Socket.IO ───────────────────────────────────────────
+  - type: web
+    name: antigravity-server
+    runtime: node
+    rootDir: .
+    plan: free
+
+    # Install from repo root so pnpm workspaces resolve @repo/* packages
+    buildCommand: npm install -g pnpm@9 && pnpm install && pnpm turbo run build --filter=@repo/server
+    startCommand: node apps/server/dist/index.js
+
+    # Render uses this URL to decide if the service is healthy / alive
+    healthCheckPath: /health
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: POLLING_INTERVAL_MS
+        value: 3000
+      # ── Set these manually in the Render dashboard (never hardcode secrets) ──
+      - key: MONGO_URI
+        sync: false          # Render will prompt you to fill this in
+      - key: DELETE_PASSWORD
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false          # Set to your Vercel frontend URL after deploying web

@@ -13,6 +13,11 @@ const app = express();
 app.use(cors({ origin: config.cors.origin }));
 app.use(express.json());
 
+// ─── Health Check (used by Render + UptimeRobot to keep the service alive) ───
+app.get('/health', (_req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 // ─── Routes ───
 app.use('/api', eventRoutes);
 app.use('/api', matchRoutes);
