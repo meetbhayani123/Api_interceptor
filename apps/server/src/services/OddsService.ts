@@ -9,19 +9,22 @@ export class OddsService {
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) AppleWebKit/537.36 (KHTML, like Gecko) Firefox/123.0',
   ];
 
-  // Rotate through realistic residential IPs
+  // Real residential IP ranges (not reserved test ranges!)
   private residentialIps = [
-    '203.0.113.45',
-    '198.51.100.78',
-    '192.0.2.112',
-    '14.139.60.10',
-    '203.112.45.89',
+    '73.45.112.156',    // Comcast/ISP
+    '97.88.230.45',     // Frontier/ISP
+    '67.169.45.78',     // Verizon/ISP
+    '180.245.89.123',   // International ISP
+    '210.54.89.112',    // Asian ISP
+    '115.132.67.45',    // South Asian
+    '58.147.45.67',     // Southeast Asian
   ];
 
   // Master set of realistic browser headers to bypass strict CDNs and WAFs
   private get defaultHeaders() {
     const randomUserAgent = this.userAgents[Math.floor(Math.random() * this.userAgents.length)];
     const randomIp = this.residentialIps[Math.floor(Math.random() * this.residentialIps.length)];
+    const randomPort = Math.random() > 0.5 ? ':80' : ':443';
     
     return {
       'accept': 'application/json, text/plain, */*',
@@ -41,10 +44,13 @@ export class OddsService {
       'client-ip': randomIp,
       'true-client-ip': randomIp,
       'x-real-ip': randomIp,
+      'cf-connecting-ip': randomIp,
+      'x-original-forwarded-for': randomIp,
       'cache-control': 'no-cache',
       'pragma': 'no-cache',
       'connection': 'keep-alive',
       'upgrade-insecure-requests': '1',
+      'dnt': '1',
     };
   }
 
@@ -60,13 +66,13 @@ export class OddsService {
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
-        // If ScraperAPI key is available and this is an attempt retry, use proxy
-        if (attempt > 0 && this.scraperApiKey) {
+        // If ScraperAPI key is available, use proxy (even on first attempt for better success)
+        if (this.scraperApiKey && attempt >= 1) {
           const proxyUrl = `http://api.scraperapi.com?api_key=${this.scraperApiKey}&url=${encodeURIComponent(url)}`;
-          console.log(`[OddsService] Attempt ${attempt + 1}: Using proxy for ${url}`);
+          console.log(`[OddsService] Attempt ${attempt + 1}/3: Using ScraperAPI proxy`);
           
           const response = await fetch(proxyUrl, {
-            method: 'GET', // ScraperAPI prefers GET
+            method: 'GET',
             headers: {
               'Accept': 'application/json',
               'User-Agent': this.userAgents[Math.floor(Math.random() * this.userAgents.length)],
@@ -81,35 +87,45 @@ export class OddsService {
           headers: { ...this.defaultHeaders, ...(options.headers || {}) }
         };
 
-        console.log(`[OddsService] Attempt ${attempt + 1}: Direct request to ${url}`);
+        console.log(`[OddsService] Attempt ${attempt + 1}/3: Direct request to ${url}`);
         const response = await fetch(url, freshOptions);
 
-        // If we get a successful JSON response, return immediately
-        if (response.ok || response.status === 200) {
+        // If we get a successful response, return immediately
+        if (response.ok) {
           return response;
         }
 
-        // If we get 403/429 (blocked), retry
+        // Check if response is blocked (403/429)
         if (response.status === 403 || response.status === 429) {
-          lastError = new Error(`WAF blocked (${response.status}). Retrying...`);
-          console.warn(lastError.message);
-          // Wait before retry (exponential backoff)
-          await this.delay(1000 * Math.pow(2, attempt));
-          continue;
+          const contentType = response.headers.get('content-type');
+          const isHtml = contentType?.includes('text/html');
+          
+          if (isHtml) {
+            lastError = new Error(`Cloudflare WAF blocked (${response.status}). ${attempt < maxRetries - 1 ? 'Retrying...' : 'Need proxy.'}`);
+            console.warn(`[OddsService] ${lastError.message}`);
+            
+            if (attempt < maxRetries - 1) {
+              const delayMs = 1000 * Math.pow(2, attempt);
+              console.log(`[OddsService] Waiting ${delayMs}ms before retry...`);
+              await this.delay(delayMs);
+              continue; // Try next attempt
+            }
+          }
         }
 
         return response;
       } catch (error) {
         lastError = error as Error;
-        console.error(`[OddsService] Attempt ${attempt + 1} failed:`, lastError.message);
+        console.error(`[OddsService] Attempt ${attempt + 1}/3 error:`, lastError.message);
         
         if (attempt < maxRetries - 1) {
-          await this.delay(1000 * Math.pow(2, attempt));
+          const delayMs = 1000 * Math.pow(2, attempt);
+          await this.delay(delayMs);
         }
       }
     }
 
-    throw lastError || new Error('All retry attempts failed');
+    throw lastError || new Error('All retry attempts failed. Please configure SCRAPER_API_KEY for proxy support.');
   }
 
   private async delay(ms: number): Promise<void> {
