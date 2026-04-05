@@ -24,28 +24,21 @@ export class OddsService {
   private get defaultHeaders() {
     const randomUserAgent = this.userAgents[Math.floor(Math.random() * this.userAgents.length)];
     const randomIp = this.residentialIps[Math.floor(Math.random() * this.residentialIps.length)];
-    const randomPort = Math.random() > 0.5 ? ':80' : ':443';
     
     return {
       'accept': 'application/json, text/plain, */*',
       'accept-language': 'en-GB,en-US;q=0.9,en;q=0.8',
       'accept-encoding': 'gzip, deflate, br',
-      'origin': 'https://www.11xplay.pink',
-      'referer': 'https://www.11xplay.pink/',
+      'origin': 'https://11xplay.pink',
+      'referer': 'https://11xplay.pink/',
       'priority': 'u=1, i',
-      'sec-ch-ua': '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
+      'sec-ch-ua': '"Chromium";v="146", "Not-A.Brand";v="24", "Google Chrome";v="146"',
       'sec-ch-ua-mobile': '?0',
-      'sec-ch-ua-platform': '"Windows"',
+      'sec-ch-ua-platform': '"Linux"',
       'sec-fetch-dest': 'empty',
       'sec-fetch-mode': 'cors',
       'sec-fetch-site': 'same-site',
       'user-agent': randomUserAgent,
-      'x-forwarded-for': randomIp,
-      'client-ip': randomIp,
-      'true-client-ip': randomIp,
-      'x-real-ip': randomIp,
-      'cf-connecting-ip': randomIp,
-      'x-original-forwarded-for': randomIp,
       'cache-control': 'no-cache',
       'pragma': 'no-cache',
       'connection': 'keep-alive',
@@ -66,28 +59,6 @@ export class OddsService {
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
-        // If ScraperAPI key is available, use proxy (even on first attempt for better success)
-        if (this.scraperApiKey && attempt >= 1) {
-          const proxyUrl = `https://api.scraperapi.com?api_key=${this.scraperApiKey}&url=${encodeURIComponent(url)}`;
-          console.log(`[OddsService] Attempt ${attempt + 1}/3: Using ScraperAPI proxy for ${url}`);
-          
-          const response = await fetch(proxyUrl, {
-            method: 'GET',
-            headers: {
-              'Accept': 'application/json',
-              'User-Agent': this.userAgents[Math.floor(Math.random() * this.userAgents.length)],
-            },
-          });
-          
-          if (!response.ok) {
-            const text = await response.text();
-            console.error(`[OddsService] ScraperAPI error (${response.status}):`, text.substring(0, 200));
-            throw new Error(`ScraperAPI returned ${response.status}: ${text.substring(0, 150)}`);
-          }
-          
-          return response;
-        }
-
         // Direct fetch with fresh headers each attempt
         const freshOptions = {
           ...options,
@@ -152,8 +123,11 @@ export class OddsService {
     try {
       const response = await this.fetchWithRetry(url, {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: '{}'
+        headers: {
+          'content-type': 'application/x-www-form-urlencoded',
+          'authorization': ''
+        },
+        body: ''
       });
 
       const text = await response.text();
@@ -214,8 +188,11 @@ export class OddsService {
     try {
       const response = await this.fetchWithRetry(url, {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: '{}'
+        headers: {
+          'content-type': 'application/x-www-form-urlencoded',
+          'authorization': ''
+        },
+        body: ''
       });
 
       const text = await response.text();
