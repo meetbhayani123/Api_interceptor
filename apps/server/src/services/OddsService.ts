@@ -68,8 +68,8 @@ export class OddsService {
       try {
         // If ScraperAPI key is available, use proxy (even on first attempt for better success)
         if (this.scraperApiKey && attempt >= 1) {
-          const proxyUrl = `http://api.scraperapi.com?api_key=${this.scraperApiKey}&url=${encodeURIComponent(url)}`;
-          console.log(`[OddsService] Attempt ${attempt + 1}/3: Using ScraperAPI proxy`);
+          const proxyUrl = `https://api.scraperapi.com?api_key=${this.scraperApiKey}&url=${encodeURIComponent(url)}`;
+          console.log(`[OddsService] Attempt ${attempt + 1}/3: Using ScraperAPI proxy for ${url}`);
           
           const response = await fetch(proxyUrl, {
             method: 'GET',
@@ -78,6 +78,13 @@ export class OddsService {
               'User-Agent': this.userAgents[Math.floor(Math.random() * this.userAgents.length)],
             },
           });
+          
+          if (!response.ok) {
+            const text = await response.text();
+            console.error(`[OddsService] ScraperAPI error (${response.status}):`, text.substring(0, 200));
+            throw new Error(`ScraperAPI returned ${response.status}: ${text.substring(0, 150)}`);
+          }
+          
           return response;
         }
 
