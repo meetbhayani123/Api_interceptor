@@ -10,8 +10,9 @@ let io: Server;
 export function initSocketServer(httpServer: HttpServer): Server {
   io = new Server(httpServer, {
     cors: {
-      origin: config.cors.origin,
+      origin: true, // Allow any origin
       methods: ['GET', 'POST'],
+      credentials: true
     },
   });
 

@@ -10,7 +10,13 @@ import pollingRoutes from './routes/polling.routes.js';
 
 // ─── Express App ───
 const app = express();
-app.use(cors({ origin: config.cors.origin }));
+app.use(cors({
+  origin: function (origin, callback) {
+    // dynamically allow any origin 
+    callback(null, true);
+  },
+  credentials: true
+}));
 app.use(express.json());
 
 // ─── Health Check (used by Render + UptimeRobot to keep the service alive) ───
