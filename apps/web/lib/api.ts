@@ -22,9 +22,14 @@ export const api = {
 
   /** Import matches from event IDs */
   importMatches: (eventIds: string) =>
-    request<any>('/api/match/import', {
+    fetch('/api/import', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ eventIds }),
+    }).then(async (res) => {
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Request failed: ${res.status}`);
+      return data;
     }),
 
   /** Get single match with snapshots + book */

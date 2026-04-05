@@ -72,6 +72,48 @@ export async function importMatches(req: Request, res: Response) {
   }
 }
 
+/** POST /api/match/import-details — Upsert a match from already-fetched event details */
+export async function importMatchDetails(req: Request, res: Response) {
+  try {
+    const { eventId, marketId, team1, team2, name, startTime } = req.body ?? {};
+
+    if (!eventId || !marketId || !team1 || !team2) {
+      return res.status(400).json({
+        error: 'eventId, marketId, team1, and team2 are required',
+      });
+    }
+
+    const matchName = name || `${team1} vs ${team2}`;
+
+    const match = await Match.findOneAndUpdate(
+      { eventId },
+      {
+        $set: {
+          marketId,
+          name: matchName,
+          teamA: team1,
+          teamB: team2,
+          ...(startTime ? { startTime: new Date(startTime) } : {}),
+        },
+        $setOnInsert: {
+          startTime: startTime ? new Date(startTime) : new Date(),
+          status: 'upcoming',
+          oddsHistory: [],
+        },
+      },
+      { new: true, upsert: true }
+    );
+
+    res.json({
+      message: 'Match saved successfully',
+      match,
+    });
+  } catch (error: any) {
+    console.error('[MatchController] Import details error:', error);
+    res.status(500).json({ error: error.message || 'Failed to import match details' });
+  }
+}
+
 /** GET /api/matches — List all matches */
 export async function listMatches(_req: Request, res: Response) {
   try {

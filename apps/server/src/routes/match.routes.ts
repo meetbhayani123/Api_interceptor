@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   importMatches,
+  importMatchDetails,
   listMatches,
   getMatch,
   deleteMatch,
@@ -10,6 +11,7 @@ import {
 const router = Router();
 
 router.post('/match/import', importMatches);
+router.post('/match/import-details', importMatchDetails);
 router.get('/matches', listMatches);
 router.get('/match/:id', getMatch);
 router.delete('/match/:id', deleteMatch);
