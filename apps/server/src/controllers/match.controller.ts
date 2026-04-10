@@ -5,7 +5,8 @@ import { OddsService } from '../services/OddsService.js';
 import { calculateMatchBook } from '../services/BookService.js';
 import { isPolling } from '../services/PollingService.js';
 import { config } from '../config/env.js';
-import { mapRecord, calculateNetBook } from '@repo/utils';
+
+const SNAPSHOT_WINDOW_SIZE = 30;
 
 const oddsService = new OddsService();
 
@@ -130,11 +131,19 @@ export async function getMatch(req: Request, res: Response) {
     const match = await Match.findById(req.params.id).lean();
     if (!match) return res.status(404).json({ error: 'Match not found' });
 
-    const snapshots = await OddsSnapshot.find({ matchId: req.params.id }).sort({ capturedAt: 1 });
-    const records = snapshots.map(mapRecord);
-    const finalBook = calculateNetBook(records);
+    const [totalSnapshotCount, latestSnapshotsDesc, finalBook] = await Promise.all([
+      OddsSnapshot.countDocuments({ matchId: req.params.id }),
+      OddsSnapshot.find({ matchId: req.params.id })
+        .sort({ capturedAt: -1 })
+        .limit(SNAPSHOT_WINDOW_SIZE)
+        .lean(),
+      calculateMatchBook(req.params.id),
+    ]);
 
-    res.json({ ...match, snapshots, finalBook });
+    // Keep payload chronological for consumers that assume oldest -> newest ordering.
+    const snapshots = latestSnapshotsDesc.reverse();
+
+    res.json({ ...match, snapshots, totalSnapshotCount, finalBook });
   } catch (error: any) {
     res.status(500).json({ error: 'Failed to fetch match' });
   }

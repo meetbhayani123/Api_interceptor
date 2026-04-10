@@ -9,6 +9,8 @@ import { Spinner } from '@/components/ui/Spinner';
 import { FinalBookCard } from '@/components/match/FinalBookCard';
 import { SnapshotGrid } from '@/components/match/SnapshotGrid';
 
+const SNAPSHOT_WINDOW_SIZE = 30;
+
 export default function MatchDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -51,13 +53,24 @@ export default function MatchDetailPage() {
         const snapshotId = data.snapshot._id || data.snapshot.sequenceId;
 
         if (existingIds.has(snapshotId)) {
-          return { ...prev, finalBook: data.finalBook };
+          return {
+            ...prev,
+            finalBook: data.finalBook,
+            totalSnapshotCount: data.totalSnapshotCount ?? prev.totalSnapshotCount ?? 0,
+          };
         }
+
+        const nextSnapshots = [...(prev.snapshots || []), data.snapshot].slice(-SNAPSHOT_WINDOW_SIZE);
 
         return {
           ...prev,
           finalBook: data.finalBook,
-          snapshots: [...(prev.snapshots || []), data.snapshot],
+          snapshots: nextSnapshots,
+          totalSnapshotCount:
+            data.totalSnapshotCount ??
+            (typeof prev.totalSnapshotCount === 'number'
+              ? prev.totalSnapshotCount + 1
+              : nextSnapshots.length),
         };
       });
     });
@@ -163,6 +176,7 @@ export default function MatchDetailPage() {
         {/* Snapshots */}
         <SnapshotGrid
           snapshots={match.snapshots}
+          totalFrames={match.totalSnapshotCount ?? match.snapshots?.length ?? 0}
           teamA={match.teamA}
           teamB={match.teamB}
         />

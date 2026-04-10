@@ -1,42 +1,135 @@
-import { exec } from 'child_process';
-import { promisify } from 'util';
-const execPromise = promisify(exec);
 export class OddsService {
+    scraperApiKey = process.env.SCRAPER_API_KEY;
+    // Rotate through multiple user agents
+    userAgents = [
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) AppleWebKit/537.36 (KHTML, like Gecko) Firefox/123.0',
+    ];
+    // Real residential IP ranges (not reserved test ranges!)
+    residentialIps = [
+        '73.45.112.156', // Comcast/ISP
+        '97.88.230.45', // Frontier/ISP
+        '67.169.45.78', // Verizon/ISP
+        '180.245.89.123', // International ISP
+        '210.54.89.112', // Asian ISP
+        '115.132.67.45', // South Asian
+        '58.147.45.67', // Southeast Asian
+    ];
+    // Master set of realistic browser headers to bypass strict CDNs and WAFs
+    get defaultHeaders() {
+        const randomUserAgent = this.userAgents[Math.floor(Math.random() * this.userAgents.length)];
+        const randomIp = this.residentialIps[Math.floor(Math.random() * this.residentialIps.length)];
+        return {
+            'accept': 'application/json, text/plain, */*',
+            'accept-language': 'en-GB,en-US;q=0.9,en;q=0.8',
+            'accept-encoding': 'gzip, deflate, br',
+            'origin': 'https://11xplay.pink',
+            'referer': 'https://11xplay.pink/',
+            'priority': 'u=1, i',
+            'sec-ch-ua': '"Chromium";v="146", "Not-A.Brand";v="24", "Google Chrome";v="146"',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-platform': '"Linux"',
+            'sec-fetch-dest': 'empty',
+            'sec-fetch-mode': 'cors',
+            'sec-fetch-site': 'same-site',
+            'user-agent': randomUserAgent,
+            'cache-control': 'no-cache',
+            'pragma': 'no-cache',
+            'connection': 'keep-alive',
+            'upgrade-insecure-requests': '1',
+            'dnt': '1',
+        };
+    }
+    /**
+     * Fetch with retry logic and optional proxy bypass
+     */
+    async fetchWithRetry(url, options, maxRetries = 3) {
+        let lastError = null;
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+                // Direct fetch with fresh headers each attempt
+                const freshOptions = {
+                    ...options,
+                    headers: { ...this.defaultHeaders, ...(options.headers || {}) }
+                };
+                console.log(`[OddsService] Attempt ${attempt + 1}/3: Direct request to ${url}`);
+                const response = await fetch(url, freshOptions);
+                // If we get a successful response, return immediately
+                if (response.ok) {
+                    return response;
+                }
+                // Check if response is blocked (403/429)
+                if (response.status === 403 || response.status === 429) {
+                    const contentType = response.headers.get('content-type');
+                    const isHtml = contentType?.includes('text/html');
+                    if (isHtml) {
+                        lastError = new Error(`Cloudflare WAF blocked (${response.status}). ${attempt < maxRetries - 1 ? 'Retrying...' : 'Need proxy.'}`);
+                        console.warn(`[OddsService] ${lastError.message}`);
+                        if (attempt < maxRetries - 1) {
+                            const delayMs = 1000 * Math.pow(2, attempt);
+                            console.log(`[OddsService] Waiting ${delayMs}ms before retry...`);
+                            await this.delay(delayMs);
+                            continue; // Try next attempt
+                        }
+                    }
+                }
+                return response;
+            }
+            catch (error) {
+                lastError = error;
+                console.error(`[OddsService] Attempt ${attempt + 1}/3 error:`, lastError.message);
+                if (attempt < maxRetries - 1) {
+                    const delayMs = 1000 * Math.pow(2, attempt);
+                    await this.delay(delayMs);
+                }
+            }
+        }
+        throw lastError || new Error('All retry attempts failed. Please configure SCRAPER_API_KEY for proxy support.');
+    }
+    async delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+    async readJsonResponse(response, context) {
+        const text = await response.text();
+        try {
+            return JSON.parse(text);
+        }
+        catch {
+            const contentType = response.headers.get('content-type') || 'unknown';
+            console.error(`[OddsService] ${context} returned non-JSON response`, {
+                status: response.status,
+                statusText: response.statusText,
+                contentType,
+                body: text,
+            });
+            throw new Error(`${context} returned non-JSON response (${response.status} ${response.statusText}, ${contentType}): ${text}`);
+        }
+    }
     /**
      * getEventDetails(eventId) -> Returns Teams and Market ID.
-     *
-     * Takes an eventId, sanitizes it to prevent shell injection, and runs a curl
-     * request against 11xplay system simulating a generic browser request.
      */
     async getEventDetails(eventId) {
-        // 1. Handling Shell Injection: Strict regex check ensuring only numeric values are passed
         if (!/^\d+$/.test(eventId)) {
             throw new Error('Security Alert: Invalid eventId. Must contain only numeric values.');
         }
         const url = `https://api.11xplay.pink/api/guest/event/${eventId}`;
-        // 2. Fetch using system curl with explicit browser headers
-        const command = `curl -s -X POST "${url}" \\
-      -H "Origin: https://www.11xplay.pink" \\
-      -H "Referer: https://www.11xplay.pink/" \\
-      -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36" \\
-      -H "Content-Type: application/json" -d '{}'`;
         try {
-            const { stdout } = await execPromise(command);
-            let response;
-            try {
-                response = JSON.parse(stdout);
-            }
-            catch (err) {
-                throw new Error('Invalid JSON response from server: ' + stdout.substring(0, 100));
-            }
-            // 3. Data Extraction
-            // A. Extract Team Names natively from runners if possible
-            const runners = response.data?.event?.match_odds?.runners || response.match_odds?.runners || [];
+            const response = await this.fetchWithRetry(url, {
+                method: 'POST',
+                headers: {
+                    'content-type': 'application/x-www-form-urlencoded',
+                    'authorization': ''
+                },
+                body: ''
+            });
+            const data = await this.readJsonResponse(response, `getEventDetails(${eventId})`);
+            const runners = data.data?.event?.match_odds?.runners || data.match_odds?.runners || [];
             let team1 = runners.length > 0 ? runners[0].name : 'Unknown Team A';
             let team2 = runners.length > 1 ? runners[1].name : 'Unknown Team B';
-            // Fallback parsing if runners array is unexpectedly missing
             if (team1 === 'Unknown Team A' && team2 === 'Unknown Team B') {
-                const matchName = response.data?.event?.event?.name || response.name || response.event?.name || '';
+                const matchName = data.data?.event?.event?.name || data.name || data.event?.name || '';
                 if (matchName.includes(' v ')) {
                     const parts = matchName.split(' v ');
                     team1 = parts[0]?.trim();
@@ -48,15 +141,13 @@ export class OddsService {
                     team2 = parts[1]?.trim();
                 }
                 else if (matchName) {
-                    team1 = matchName; // fallback if splitting fails
+                    team1 = matchName;
                 }
             }
-            // B. Extract market_id from the match_odds object
-            const marketId = response.data?.event?.match_odds?.market_id || response.match_odds?.market_id;
+            const marketId = data.data?.event?.match_odds?.market_id || data.match_odds?.market_id;
             if (!marketId) {
                 throw new Error('market_id not explicitly found in match_odds object');
             }
-            // Return clean JSON object
             return {
                 team1,
                 team2,
@@ -72,24 +163,20 @@ export class OddsService {
      * getMarketOdds(marketId) -> Uses the ID from Function A to get the actual prices.
      */
     async getMarketOdds(marketId) {
-        // Sanitize marketId (allowing dots, dashes, and alphanumerics) to prevent injection
         if (!/^[a-zA-Z0-9.\-]+$/.test(marketId)) {
             throw new Error('Security Alert: Invalid marketId.');
         }
         const url = `https://api.11xplay.pink/api/guest/market/${marketId}`;
-        const command = `curl -s -X POST "${url}" \\
-      -H "Origin: https://www.11xplay.pink" \\
-      -H "Referer: https://www.11xplay.pink/" \\
-      -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" \\
-      -H "Content-Type: application/json" -d '{}'`;
         try {
-            const { stdout } = await execPromise(command);
-            try {
-                return JSON.parse(stdout); // Returning raw prices object
-            }
-            catch (err) {
-                throw new Error('Invalid JSON response from server: ' + stdout.substring(0, 100));
-            }
+            const response = await this.fetchWithRetry(url, {
+                method: 'POST',
+                headers: {
+                    'content-type': 'application/x-www-form-urlencoded',
+                    'authorization': ''
+                },
+                body: ''
+            });
+            return await this.readJsonResponse(response, `getMarketOdds(${marketId})`);
         }
         catch (error) {
             console.error('OddsService: Error fetching market odds:', error);
@@ -103,22 +190,18 @@ export class OddsService {
         if (!/^[a-zA-Z0-9.\-]+$/.test(marketId)) {
             throw new Error('Security Alert: Invalid marketId.');
         }
-        const command = `curl -s --location 'https://odds.o11xplay.com/ws/getMarketDataNew' \\
-      --header 'accept: application/json, text/plain, */*' \\
-      --header 'content-type: application/x-www-form-urlencoded' \\
-      --header 'origin: https://11xplay.pink' \\
-      --header 'referer: https://11xplay.pink/' \\
-      --header 'user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' \\
-      --data-urlencode 'market_ids[]=${marketId}'`;
+        const url = 'https://odds.o11xplay.com/ws/getMarketDataNew';
         try {
-            const { stdout } = await execPromise(command);
-            let data;
-            try {
-                data = JSON.parse(stdout);
-            }
-            catch (err) {
-                throw new Error('Invalid JSON snapshot: ' + stdout.substring(0, 100));
-            }
+            const response = await this.fetchWithRetry(url, {
+                method: 'POST',
+                headers: {
+                    'content-type': 'application/x-www-form-urlencoded',
+                    'origin': 'https://11xplay.pink',
+                    'referer': 'https://11xplay.pink/'
+                },
+                body: new URLSearchParams({ 'market_ids[]': marketId }).toString()
+            });
+            const data = await this.readJsonResponse(response, `getSnapshotData(${marketId})`);
             if (!Array.isArray(data) || data.length === 0) {
                 throw new Error('No data found for marketId snapshot');
             }

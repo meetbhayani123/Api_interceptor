@@ -58,7 +58,12 @@ async function executePoll(matchId: string): Promise<void> {
 
     // Calculate updated book and emit to subscribers
     const finalBook = await calculateMatchBook(matchId);
-    getIO().to(matchId).emit('odds_update', { matchId, snapshot, finalBook });
+    getIO().to(matchId).emit('odds_update', {
+      matchId,
+      snapshot,
+      finalBook,
+      totalSnapshotCount: snapshot.sequenceId,
+    });
   } catch (error) {
     console.error(`[PollingService] Error for match ${matchId}:`, error);
   }

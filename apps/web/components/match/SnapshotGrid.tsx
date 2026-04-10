@@ -2,11 +2,12 @@ import { TeamOddsCell } from './TeamOddsCell';
 
 interface SnapshotGridProps {
   snapshots: any[];
+  totalFrames: number;
   teamA: string;
   teamB: string;
 }
 
-export function SnapshotGrid({ snapshots, teamA, teamB }: SnapshotGridProps) {
+export function SnapshotGrid({ snapshots, totalFrames, teamA, teamB }: SnapshotGridProps) {
   if (!snapshots || snapshots.length === 0) {
     return (
       <div className="bg-slate-800/20 border border-slate-700/30 border-dashed rounded-2xl p-12 text-center text-slate-500 flex flex-col items-center justify-center">
@@ -19,7 +20,7 @@ export function SnapshotGrid({ snapshots, teamA, teamB }: SnapshotGridProps) {
     );
   }
 
-  const total = snapshots.length;
+  const total = totalFrames;
 
   return (
     <div className="space-y-6">
