@@ -20,6 +20,8 @@ services:
         value: 3001
       - key: POLLING_INTERVAL_MS
         value: 3000
+      - key: NODE_OPTIONS
+        value: --max-old-space-size=400
       # ── Set these manually in the Render dashboard (never hardcode secrets) ──
       - key: MONGO_URI
         sync: false          # Render will prompt you to fill this in
