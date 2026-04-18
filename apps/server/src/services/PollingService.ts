@@ -2,12 +2,13 @@ import crypto from 'crypto';
 import { Match } from '../models/Match.js';
 import { OddsSnapshot } from '../models/OddsSnapshot.js';
 import { OddsService } from './OddsService.js';
-import { calculateMatchBook } from './BookService.js';
+import { addBookResults, calculateMatchBook, calculateSnapshotBook } from './BookService.js';
 import { getIO } from '../socket/index.js';
 import { config } from '../config/env.js';
 
 const oddsService = new OddsService();
 const activePolls = new Map<string, NodeJS.Timeout>();
+const runningPolls = new Set<string>();
 
 /**
  * Compares two team odds snapshots for equality.
@@ -29,12 +30,22 @@ function isSnapshotIdentical(
  * Execute a single poll cycle: fetch odds, deduplicate, save, emit via socket.
  */
 async function executePoll(matchId: string): Promise<void> {
-  const match = await Match.findById(matchId);
-  if (!match?.marketId) return;
+  if (runningPolls.has(matchId)) return;
+
+  runningPolls.add(matchId);
 
   try {
+    const match = await Match.findById(matchId)
+      .select({ marketId: 1, finalBook: 1, totalSnapshotCount: 1 })
+      .lean();
+
+    if (!match?.marketId) return;
+
     const { teamA, teamB } = await oddsService.getSnapshotData(match.marketId);
-    const latestSnapshot = await OddsSnapshot.findOne({ matchId }).sort({ capturedAt: -1 });
+    const latestSnapshot = await OddsSnapshot.findOne({ matchId })
+      .sort({ capturedAt: -1 })
+      .select({ teamA: 1, teamB: 1, sequenceId: 1, capturedAt: 1 })
+      .lean();
 
     // Skip if data hasn't changed
     if (latestSnapshot && isSnapshotIdentical(latestSnapshot, { teamA, teamB })) {
@@ -56,8 +67,18 @@ async function executePoll(matchId: string): Promise<void> {
 
     await snapshot.save();
 
-    // Calculate updated book and emit to subscribers
-    const finalBook = await calculateMatchBook(matchId);
+    // Update the cached book so detail requests do not rescan every snapshot.
+    const finalBook = match.finalBook
+      ? addBookResults(match.finalBook, calculateSnapshotBook(snapshot))
+      : await calculateMatchBook(matchId);
+
+    await Match.findByIdAndUpdate(matchId, {
+      $set: {
+        finalBook,
+        totalSnapshotCount: snapshot.sequenceId,
+      },
+    });
+
     getIO().to(matchId).emit('odds_update', {
       matchId,
       snapshot,
@@ -66,6 +87,8 @@ async function executePoll(matchId: string): Promise<void> {
     });
   } catch (error) {
     console.error(`[PollingService] Error for match ${matchId}:`, error);
+  } finally {
+    runningPolls.delete(matchId);
   }
 }
 

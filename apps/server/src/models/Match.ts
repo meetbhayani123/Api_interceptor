@@ -1,7 +1,10 @@
 import mongoose, { Schema, Document } from 'mongoose';
-import type { IMatch, IOddsEntry } from '@repo/types';
+import type { IMatch, IOddsEntry, IBookResult } from '@repo/types';
 
-export interface IMatchDocument extends Omit<IMatch, '_id'>, Document {}
+export interface IMatchDocument extends Omit<IMatch, '_id'>, Document {
+  finalBook?: IBookResult;
+  totalSnapshotCount?: number;
+}
 
 const OddsEntrySchema = new Schema<IOddsEntry>({
   timestamp: { type: Date, default: Date.now },
@@ -24,6 +27,8 @@ const MatchSchema = new Schema<IMatchDocument>({
     default: 'upcoming',
   },
   oddsHistory: [OddsEntrySchema],
-}, { timestamps: true });
+  finalBook: { type: Schema.Types.Mixed, required: false },
+  totalSnapshotCount: { type: Number, min: 0, default: 0 },
+} as any, { timestamps: true });
 
 export const Match = mongoose.model<IMatchDocument>('Match', MatchSchema);

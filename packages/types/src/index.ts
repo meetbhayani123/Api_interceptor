@@ -38,6 +38,8 @@ export interface IMatch {
   startTime: Date;
   status: MatchStatus;
   oddsHistory: IOddsEntry[];
+  finalBook?: IBookResult;
+  totalSnapshotCount?: number;
   createdAt?: Date;
   updatedAt?: Date;
 }

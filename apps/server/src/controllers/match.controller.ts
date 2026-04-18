@@ -128,20 +128,48 @@ export async function listMatches(_req: Request, res: Response) {
 /** GET /api/match/:id — Get single match with snapshots + book */
 export async function getMatch(req: Request, res: Response) {
   try {
-    const match = await Match.findById(req.params.id).lean();
+    const match = await Match.findById(req.params.id)
+      .select({
+        eventId: 1,
+        marketId: 1,
+        name: 1,
+        teamA: 1,
+        teamB: 1,
+        startTime: 1,
+        status: 1,
+        finalBook: 1,
+        totalSnapshotCount: 1,
+        createdAt: 1,
+        updatedAt: 1,
+      })
+      .lean();
+
     if (!match) return res.status(404).json({ error: 'Match not found' });
 
-    const [totalSnapshotCount, latestSnapshotsDesc, finalBook] = await Promise.all([
-      OddsSnapshot.countDocuments({ matchId: req.params.id }),
+    const [snapshotCountFromDb, latestSnapshotsDesc] = await Promise.all([
+      match.totalSnapshotCount ?? OddsSnapshot.countDocuments({ matchId: req.params.id }),
       OddsSnapshot.find({ matchId: req.params.id })
         .sort({ capturedAt: -1 })
         .limit(SNAPSHOT_WINDOW_SIZE)
+        .select({ matchId: 1, sequenceId: 1, capturedAt: 1, teamA: 1, teamB: 1 })
         .lean(),
-      calculateMatchBook(req.params.id),
     ]);
 
     // Keep payload chronological for consumers that assume oldest -> newest ordering.
     const snapshots = latestSnapshotsDesc.reverse();
+    const totalSnapshotCount = snapshotCountFromDb;
+    let finalBook = match.finalBook;
+
+    if (!finalBook) {
+      finalBook = await calculateMatchBook(req.params.id);
+
+      await Match.findByIdAndUpdate(req.params.id, {
+        $set: {
+          finalBook,
+          totalSnapshotCount,
+        },
+      });
+    }
 
     res.json({ ...match, snapshots, totalSnapshotCount, finalBook });
   } catch (error: any) {
