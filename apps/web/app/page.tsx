@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { api } from '@/lib/api';
+import { getSocket } from '@/lib/socket';
 import { ImportPanel } from '@/components/dashboard/ImportPanel';
 import { MatchCard } from '@/components/dashboard/MatchCard';
 import { DeleteModal } from '@/components/modals/DeleteModal';
@@ -23,9 +24,49 @@ export default function DashboardPage() {
     fetchMatches();
   }, [fetchMatches]);
 
+  const matchIdsStr = useMemo(() => matches.map(m => m._id).join(','), [matches]);
+
+  useEffect(() => {
+    if (!matchIdsStr) return;
+    const socket = getSocket();
+    const ids = matchIdsStr.split(',');
+    
+    ids.forEach(id => socket.emit('join_match', id));
+
+    const handleOddsUpdate = (data: any) => {
+      setMatches((prev) => 
+        prev.map((m) => 
+          m._id === data.matchId ? { ...m, finalBook: data.finalBook, totalSnapshotCount: data.totalSnapshotCount } : m
+        )
+      );
+    };
+
+    socket.on('odds_update', handleOddsUpdate);
+
+    return () => {
+      ids.forEach(id => socket.emit('leave_match', id));
+      socket.off('odds_update', handleOddsUpdate);
+    };
+  }, [matchIdsStr]);
+
+  const handleTogglePolling = async (matchId: string, currentPollingStatus: boolean) => {
+    try {
+      if (currentPollingStatus) {
+        setMatches(prev => prev.map(m => m._id === matchId ? { ...m, isPolling: false } : m));
+        await api.stopPolling(matchId);
+      } else {
+        setMatches(prev => prev.map(m => m._id === matchId ? { ...m, isPolling: true } : m));
+        await api.startPolling(matchId);
+      }
+    } catch (err) {
+      console.error('Failed to toggle polling:', err);
+      fetchMatches();
+    }
+  };
+
   return (
-    <div className="p-4 sm:p-6 lg:p-8 z-10 relative">
-      <div className="max-w-4xl mx-auto flex flex-col gap-6 items-center">
+    <div className="p-4 sm:p-6 lg:p-8 z-10 relative overflow-x-hidden w-full">
+      <div className="max-w-4xl mx-auto flex flex-col gap-6 items-center w-full">
 
         {/* Import Panel */}
         <div className="w-full">
@@ -61,6 +102,7 @@ export default function DashboardPage() {
                     key={match._id}
                     match={match}
                     onDelete={setDeleteTarget}
+                    onTogglePolling={handleTogglePolling}
                   />
                 ))}
               </div>
