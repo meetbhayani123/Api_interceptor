@@ -111,6 +111,16 @@ export async function importMatchDetails(req: Request, res: Response) {
     });
   } catch (error: any) {
     console.error('[MatchController] Import details error:', error);
+
+    // Friendly message for MongoDB duplicate-key errors
+    if (error.code === 11000 || (error.message && error.message.includes('E11000'))) {
+      const keyMatch = error.message?.match(/dup key: \{([^}]+)\}/);
+      const keyInfo = keyMatch ? keyMatch[1].trim() : 'unknown field';
+      return res.status(409).json({
+        error: `Duplicate entry detected (${keyInfo}). This match may already exist or there is a stale database index. Please check your existing matches or contact support if this persists.`,
+      });
+    }
+
     res.status(500).json({ error: error.message || 'Failed to import match details' });
   }
 }

@@ -36,8 +36,25 @@ initSocketServer(httpServer);
 // ─── Start ───
 mongoose
   .connect(config.mongoUri)
-  .then(() => {
+  .then(async () => {
     console.log('✓ Connected to MongoDB');
+
+    // Drop stale `matchId_1` unique index if it exists.
+    // This index was left over from an earlier schema version and causes
+    // E11000 duplicate-key errors when inserting new matches.
+    try {
+      const matchesCollection = mongoose.connection.db!.collection('matches');
+      const indexes = await matchesCollection.indexes();
+      const staleIndex = indexes.find((idx: any) => idx.name === 'matchId_1');
+      if (staleIndex) {
+        await matchesCollection.dropIndex('matchId_1');
+        console.log('✓ Dropped stale matchId_1 index from matches collection');
+      }
+    } catch (indexErr: any) {
+      // Non-fatal: log and continue
+      console.warn('⚠ Could not clean up stale index:', indexErr.message);
+    }
+
     httpServer.listen(config.port, () => {
       console.log(`✓ Server listening on port ${config.port}`);
     });

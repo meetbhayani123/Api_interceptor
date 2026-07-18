@@ -87,16 +87,51 @@ export function ImportPanel({ onImportSuccess }: ImportPanelProps) {
       )}
 
       {result && (
-        <div className="mt-4 p-4 rounded-xl bg-cyan-900/20 border border-cyan-500/30">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="h-6 w-6 rounded-full bg-cyan-500/20 flex items-center justify-center">
-              <svg className="w-3.5 h-3.5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-              </svg>
+        <div className="mt-4 space-y-3">
+          {/* Success summary */}
+          <div className={`p-4 rounded-xl border ${result.errors?.length ? 'bg-amber-900/20 border-amber-500/30' : 'bg-cyan-900/20 border-cyan-500/30'}`}>
+            <div className="flex items-center gap-2 mb-1">
+              <div className={`h-6 w-6 rounded-full flex items-center justify-center ${result.errors?.length ? 'bg-amber-500/20' : 'bg-cyan-500/20'}`}>
+                {result.errors?.length ? (
+                  <svg className="w-3.5 h-3.5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.27 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                ) : (
+                  <svg className="w-3.5 h-3.5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+              </div>
+              <h3 className={`font-semibold text-sm ${result.errors?.length ? 'text-amber-400' : 'text-cyan-400'}`}>
+                {result.errors?.length ? 'Import Completed with Errors' : 'Import Finished'}
+              </h3>
             </div>
-            <h3 className="text-cyan-400 font-semibold text-sm">Import Finished</h3>
+            <p className="text-sm text-slate-300 pl-8">{result.message}</p>
           </div>
-          <p className="text-sm text-slate-300 pl-8">{result.message}</p>
+
+          {/* Per-event errors */}
+          {result.errors && result.errors.length > 0 && (
+            <div className="p-4 rounded-xl bg-red-900/20 border border-red-500/30 space-y-2">
+              <div className="flex items-center gap-2 mb-1">
+                <svg className="w-4 h-4 text-red-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <h4 className="text-red-400 font-semibold text-sm">Failed Events</h4>
+              </div>
+              <div className="space-y-1.5 pl-6">
+                {result.errors.map((err: { id: string; message: string }, i: number) => (
+                  <div key={i} className="text-sm flex flex-col gap-0.5">
+                    <span className="text-red-300 font-mono text-xs bg-red-900/30 px-2 py-0.5 rounded-md w-fit">
+                      Event: {err.id}
+                    </span>
+                    <span className="text-slate-400 text-xs pl-1">
+                      {err.message}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
