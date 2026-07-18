@@ -20,16 +20,11 @@ export const api = {
   /** List all matches */
   getMatches: () => request<any[]>('/api/matches'),
 
-  /** Import matches from event IDs */
+  /** Import matches from event IDs — routes through Render backend which has WAF bypass */
   importMatches: (eventIds: string) =>
-    fetch('/api/import', {
+    request<any>('/api/match/import', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ eventIds }),
-    }).then(async (res) => {
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || `Request failed: ${res.status}`);
-      return data;
     }),
 
   /** Get single match with snapshots + book */
