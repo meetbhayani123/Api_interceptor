@@ -19,5 +19,7 @@ const MatchSchema = new Schema({
         default: 'upcoming',
     },
     oddsHistory: [OddsEntrySchema],
+    finalBook: { type: Schema.Types.Mixed, required: false },
+    totalSnapshotCount: { type: Number, min: 0, default: 0 },
 }, { timestamps: true });
 export const Match = mongoose.model('Match', MatchSchema);

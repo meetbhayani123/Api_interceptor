@@ -1,12 +1,13 @@
 import { formatCurrency } from '@/lib/format';
 
 interface FinalBookCardProps {
+  title?: string;
   finalBook: { teamA_PL: number; teamB_PL: number };
   teamA: string;
   teamB: string;
 }
 
-export function FinalBookCard({ finalBook, teamA, teamB }: FinalBookCardProps) {
+export function FinalBookCard({ title, finalBook, teamA, teamB }: FinalBookCardProps) {
   return (
     <div className="bg-slate-800/40 backdrop-blur-xl border border-cyan-500/30 rounded-2xl p-6 md:p-8 mb-8 shadow-[0_0_30px_rgba(6,182,212,0.1)] relative overflow-hidden group">
       <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/5 to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
@@ -15,8 +16,9 @@ export function FinalBookCard({ finalBook, teamA, teamB }: FinalBookCardProps) {
         <svg className="w-6 h-6 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-        Final Book
+        {title || 'Final Book'}
       </h2>
+
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
         <TeamProjection label={teamA || 'Team A'} value={finalBook.teamA_PL} />

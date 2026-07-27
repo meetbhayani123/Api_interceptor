@@ -7,7 +7,7 @@ services:
     plan: free
 
     # Install from repo root so pnpm workspaces resolve @repo/* packages
-    buildCommand: npm install -g pnpm@9 && pnpm install && pnpm turbo run build --filter=@repo/server
+    buildCommand: pnpm install && pnpm turbo run build --filter=@repo/server
     startCommand: node apps/server/dist/index.js
 
     # Render uses this URL to decide if the service is healthy / alive

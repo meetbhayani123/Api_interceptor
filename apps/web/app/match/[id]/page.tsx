@@ -19,6 +19,7 @@ export default function MatchDetailPage() {
   const [match, setMatch] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isPolling, setIsPolling] = useState(false);
+  const [activeTab, setActiveTab] = useState<'full' | 'rolling5m'>('full');
 
   const fetchMatch = useCallback(async (silent = false) => {
     try {
@@ -56,6 +57,7 @@ export default function MatchDetailPage() {
           return {
             ...prev,
             finalBook: data.finalBook,
+            rollingBook5m: data.rollingBook5m,
             totalSnapshotCount: data.totalSnapshotCount ?? prev.totalSnapshotCount ?? 0,
           };
         }
@@ -65,6 +67,7 @@ export default function MatchDetailPage() {
         return {
           ...prev,
           finalBook: data.finalBook,
+          rollingBook5m: data.rollingBook5m,
           snapshots: nextSnapshots,
           totalSnapshotCount:
             data.totalSnapshotCount ??
@@ -164,10 +167,37 @@ export default function MatchDetailPage() {
           </div>
         </div>
 
+        {/* Book Selection Tabs */}
+        <div className="mb-6">
+          <div className="flex bg-slate-900/40 p-1.5 rounded-xl border border-slate-700/30 gap-1.5 w-full max-w-md">
+            <button
+              onClick={() => setActiveTab('full')}
+              className={`flex-1 py-2 px-4 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                activeTab === 'full'
+                  ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.15)]'
+                  : 'text-slate-400 hover:text-slate-200 border border-transparent'
+              }`}
+            >
+              Full History Book
+            </button>
+            <button
+              onClick={() => setActiveTab('rolling5m')}
+              className={`flex-1 py-2 px-4 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                activeTab === 'rolling5m'
+                  ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.15)]'
+                  : 'text-slate-400 hover:text-slate-200 border border-transparent'
+              }`}
+            >
+              Latest 5 Min Book
+            </button>
+          </div>
+        </div>
+
         {/* Final Book */}
         {match.finalBook && (
           <FinalBookCard
-            finalBook={match.finalBook}
+            title={activeTab === 'full' ? 'Final Book (Full History)' : 'Final Book (Latest 5 Minutes)'}
+            finalBook={activeTab === 'full' ? match.finalBook : (match.rollingBook5m || { teamA_PL: 0, teamB_PL: 0 })}
             teamA={match.teamA}
             teamB={match.teamB}
           />

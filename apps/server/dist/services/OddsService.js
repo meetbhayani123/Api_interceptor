@@ -1,87 +1,125 @@
 export class OddsService {
     scraperApiKey = process.env.SCRAPER_API_KEY;
-    // Rotate through multiple user agents
+    // Rotate through multiple user agents — keep versions current to avoid fingerprint mismatch
     userAgents = [
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) AppleWebKit/537.36 (KHTML, like Gecko) Firefox/123.0',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:138.0) Gecko/20100101 Firefox/138.0',
+        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36 Edg/147.0.0.0',
     ];
-    // Real residential IP ranges (not reserved test ranges!)
+    // Residential IPs for X-Forwarded-For spoofing
     residentialIps = [
-        '73.45.112.156', // Comcast/ISP
-        '97.88.230.45', // Frontier/ISP
-        '67.169.45.78', // Verizon/ISP
-        '180.245.89.123', // International ISP
-        '210.54.89.112', // Asian ISP
-        '115.132.67.45', // South Asian
-        '58.147.45.67', // Southeast Asian
+        '103.152.220.44',
+        '182.69.11.23',
+        '49.36.128.91',
+        '223.238.45.67',
+        '117.217.89.134',
+        '59.89.176.42',
+        '106.210.34.78',
+        '157.47.112.56',
     ];
-    // Master set of realistic browser headers to bypass strict CDNs and WAFs
-    get defaultHeaders() {
+    /**
+     * Build fresh browser-like headers for each request.
+     * Cloudflare checks several header fingerprint signals — we must match a real browser closely.
+     */
+    buildFreshHeaders() {
         const randomUserAgent = this.userAgents[Math.floor(Math.random() * this.userAgents.length)];
         const randomIp = this.residentialIps[Math.floor(Math.random() * this.residentialIps.length)];
-        return {
+        const isFirefox = randomUserAgent.includes('Firefox');
+        const headers = {
             'accept': 'application/json, text/plain, */*',
-            'accept-language': 'en-GB,en-US;q=0.9,en;q=0.8',
-            'accept-encoding': 'gzip, deflate, br',
+            'accept-language': 'en-US,en;q=0.9,hi;q=0.8',
             'origin': 'https://11xplay.pink',
             'referer': 'https://11xplay.pink/',
-            'priority': 'u=1, i',
-            'sec-ch-ua': '"Chromium";v="146", "Not-A.Brand";v="24", "Google Chrome";v="146"',
-            'sec-ch-ua-mobile': '?0',
-            'sec-ch-ua-platform': '"Linux"',
+            'user-agent': randomUserAgent,
             'sec-fetch-dest': 'empty',
             'sec-fetch-mode': 'cors',
             'sec-fetch-site': 'same-site',
-            'user-agent': randomUserAgent,
-            'cache-control': 'no-cache',
-            'pragma': 'no-cache',
             'connection': 'keep-alive',
-            'upgrade-insecure-requests': '1',
             'dnt': '1',
+            // Spoof forwarded IP so the CDN/WAF edge sees a residential address
+            'x-forwarded-for': randomIp,
+            'x-real-ip': randomIp,
         };
+        // Chromium-based browsers send these; Firefox does not
+        if (!isFirefox) {
+            headers['sec-ch-ua'] = '"Chromium";v="148", "Google Chrome";v="148", "Not/A)Brand";v="99"';
+            headers['sec-ch-ua-mobile'] = '?0';
+            headers['sec-ch-ua-platform'] = '"Linux"';
+            headers['priority'] = 'u=1, i';
+        }
+        return headers;
     }
     /**
-     * Fetch with retry logic and optional proxy bypass
+     * Fetch with retry logic + optional ScraperAPI proxy fallback.
+     *
+     * Strategy:
+     *   Attempt 1-2: Direct request with rotating browser headers
+     *   Attempt 3  : If SCRAPER_API_KEY is set, route through ScraperAPI residential proxy
+     *                Otherwise, try direct one more time with a longer delay
      */
     async fetchWithRetry(url, options, maxRetries = 3) {
         let lastError = null;
         for (let attempt = 0; attempt < maxRetries; attempt++) {
             try {
-                // Direct fetch with fresh headers each attempt
-                const freshOptions = {
-                    ...options,
-                    headers: { ...this.defaultHeaders, ...(options.headers || {}) }
-                };
-                console.log(`[OddsService] Attempt ${attempt + 1}/3: Direct request to ${url}`);
-                const response = await fetch(url, freshOptions);
-                // If we get a successful response, return immediately
+                const isLastAttempt = attempt === maxRetries - 1;
+                const useProxy = isLastAttempt && !!this.scraperApiKey;
+                let fetchUrl = url;
+                let fetchOptions;
+                if (useProxy) {
+                    // ScraperAPI residential proxy — bypasses Cloudflare reliably
+                    fetchUrl = `https://api.scraperapi.com?api_key=${this.scraperApiKey}&url=${encodeURIComponent(url)}&render=false&country_code=in`;
+                    fetchOptions = {
+                        method: options.method || 'POST',
+                        headers: {
+                            'content-type': options.headers?.['content-type'] || 'application/x-www-form-urlencoded',
+                        },
+                        body: options.body,
+                    };
+                    console.log(`[OddsService] Attempt ${attempt + 1}/${maxRetries}: Using ScraperAPI proxy for ${url}`);
+                }
+                else {
+                    fetchOptions = {
+                        ...options,
+                        headers: { ...this.buildFreshHeaders(), ...(options.headers || {}) },
+                    };
+                    console.log(`[OddsService] Attempt ${attempt + 1}/${maxRetries}: Direct request to ${url}`);
+                }
+                const response = await fetch(fetchUrl, fetchOptions);
+                // Successful response — return immediately
                 if (response.ok) {
+                    console.log(`[OddsService] ✅ Success on attempt ${attempt + 1} for ${url}`);
                     return response;
                 }
-                // Check if response is blocked (403/429)
+                // Blocked by WAF (403/429 with HTML body)
                 if (response.status === 403 || response.status === 429) {
-                    const contentType = response.headers.get('content-type');
-                    const isHtml = contentType?.includes('text/html');
-                    if (isHtml) {
-                        lastError = new Error(`Cloudflare WAF blocked (${response.status}). ${attempt < maxRetries - 1 ? 'Retrying...' : 'Need proxy.'}`);
+                    const contentType = response.headers.get('content-type') || '';
+                    if (contentType.includes('text/html')) {
+                        const body = await response.text();
+                        const isCloudflare = body.includes('cloudflare') || body.includes('Cloudflare');
+                        lastError = new Error(`WAF blocked (${response.status}${isCloudflare ? ', Cloudflare' : ''}). ` +
+                            `${!isLastAttempt ? 'Retrying...' : useProxy ? 'Proxy also blocked.' : 'Configure SCRAPER_API_KEY for proxy fallback.'}`);
                         console.warn(`[OddsService] ${lastError.message}`);
-                        if (attempt < maxRetries - 1) {
-                            const delayMs = 1000 * Math.pow(2, attempt);
+                        if (!isLastAttempt) {
+                            const delayMs = 1500 * Math.pow(2, attempt); // 1.5s, 3s
                             console.log(`[OddsService] Waiting ${delayMs}ms before retry...`);
                             await this.delay(delayMs);
-                            continue; // Try next attempt
+                            continue;
                         }
+                        // On last attempt, throw with helpful context
+                        throw lastError;
                     }
                 }
+                // Non-WAF error — return as-is for caller to handle
                 return response;
             }
             catch (error) {
                 lastError = error;
-                console.error(`[OddsService] Attempt ${attempt + 1}/3 error:`, lastError.message);
+                console.error(`[OddsService] Attempt ${attempt + 1}/${maxRetries} error:`, lastError.message);
                 if (attempt < maxRetries - 1) {
-                    const delayMs = 1000 * Math.pow(2, attempt);
+                    const delayMs = 1500 * Math.pow(2, attempt);
                     await this.delay(delayMs);
                 }
             }

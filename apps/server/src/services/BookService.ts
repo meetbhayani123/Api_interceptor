@@ -78,3 +78,75 @@ export function addBookResults(base: IBookResult | null | undefined, delta: IBoo
     teamB_PL: (base?.teamB_PL ?? 0) + delta.teamB_PL,
   };
 }
+
+export async function calculateMatchBookInTimeRange(
+  matchId: string,
+  startTime: Date,
+  endTime: Date = new Date()
+): Promise<IBookResult> {
+  const [result] = await OddsSnapshot.aggregate<IBookResult & { _id: null }>([
+    {
+      $match: {
+        matchId,
+        capturedAt: { $gte: startTime, $lte: endTime }
+      }
+    },
+    {
+      $group: {
+        _id: null,
+        teamA_PL: {
+          $sum: {
+            $add: [
+              {
+                $multiply: [
+                  { $subtract: [{ $arrayElemAt: ['$teamA.odds', 0] }, 1] },
+                  { $arrayElemAt: ['$teamA.pricing', 0] },
+                ],
+              },
+              {
+                $multiply: [
+                  -1,
+                  { $subtract: [{ $arrayElemAt: ['$teamA.odds', 1] }, 1] },
+                  { $arrayElemAt: ['$teamA.pricing', 1] },
+                ],
+              },
+              { $multiply: [-1, { $arrayElemAt: ['$teamB.pricing', 0] }] },
+              { $arrayElemAt: ['$teamB.pricing', 1] },
+            ],
+          },
+        },
+        teamB_PL: {
+          $sum: {
+            $add: [
+              { $multiply: [-1, { $arrayElemAt: ['$teamA.pricing', 0] }] },
+              { $arrayElemAt: ['$teamA.pricing', 1] },
+              {
+                $multiply: [
+                  { $subtract: [{ $arrayElemAt: ['$teamB.odds', 0] }, 1] },
+                  { $arrayElemAt: ['$teamB.pricing', 0] },
+                ],
+              },
+              {
+                $multiply: [
+                  -1,
+                  { $subtract: [{ $arrayElemAt: ['$teamB.odds', 1] }, 1] },
+                  { $arrayElemAt: ['$teamB.pricing', 1] },
+                ],
+              },
+            ],
+          },
+        },
+      },
+    },
+  ]).exec();
+
+  if (!result) {
+    return { teamA_PL: 0, teamB_PL: 0 };
+  }
+
+  return {
+    teamA_PL: result.teamA_PL ?? 0,
+    teamB_PL: result.teamB_PL ?? 0,
+  };
+}
+
