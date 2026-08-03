@@ -6,7 +6,8 @@ import Link from 'next/link';
 import { api } from '@/lib/api';
 import { getSocket } from '@/lib/socket';
 import { Spinner } from '@/components/ui/Spinner';
-import { TeamBookTabs } from '@/components/match/TeamBookTabs';
+import { FinalBookCard } from '@/components/match/FinalBookCard';
+import { HighLowBookCard } from '@/components/match/HighLowBookCard';
 import { SnapshotGrid } from '@/components/match/SnapshotGrid';
 
 const SNAPSHOT_WINDOW_SIZE = 30;
@@ -19,6 +20,7 @@ export default function MatchDetailPage() {
   const [match, setMatch] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isPolling, setIsPolling] = useState(false);
+  const [activeTab, setActiveTab] = useState<'full' | 'rolling5m' | 'highlow'>('full');
 
   const fetchMatch = useCallback(async (silent = false) => {
     try {
@@ -168,15 +170,62 @@ export default function MatchDetailPage() {
           </div>
         </div>
 
-        {/* Team High / Low Book Tabs */}
-        {match.finalBook && (
-          <TeamBookTabs
-            fullBook={match.finalBook}
-            rollingBook5m={match.rollingBook5m || { teamA_PL: 0, teamB_PL: 0 }}
+        {/* Book Selection Tabs */}
+        <div className="mb-6">
+          <div className="flex bg-slate-900/40 p-1.5 rounded-xl border border-slate-700/30 gap-1.5 w-full max-w-2xl">
+            <button
+              onClick={() => setActiveTab('full')}
+              className={`flex-1 py-2 px-4 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                activeTab === 'full'
+                  ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.15)]'
+                  : 'text-slate-400 hover:text-slate-200 border border-transparent'
+              }`}
+            >
+              Full History Book
+            </button>
+            <button
+              onClick={() => setActiveTab('rolling5m')}
+              className={`flex-1 py-2 px-4 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                activeTab === 'rolling5m'
+                  ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.15)]'
+                  : 'text-slate-400 hover:text-slate-200 border border-transparent'
+              }`}
+            >
+              Latest 5 Min Book
+            </button>
+            <button
+              onClick={() => setActiveTab('highlow')}
+              className={`flex-1 py-2 px-4 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-1.5 ${
+                activeTab === 'highlow'
+                  ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.15)]'
+                  : 'text-slate-400 hover:text-slate-200 border border-transparent'
+              }`}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M7 11l5-5m0 0l5 5m-5-5v12" />
+              </svg>
+              High &amp; Low
+            </button>
+          </div>
+        </div>
+
+        {/* Book Content — Tab 1: Full History, Tab 2: Rolling 5m, Tab 3: High & Low */}
+        {activeTab === 'highlow' ? (
+          <HighLowBookCard
             bookHighLow={match.bookHighLow || { teamA_high: 0, teamA_low: 0, teamB_high: 0, teamB_low: 0 }}
+            currentBook={match.finalBook || { teamA_PL: 0, teamB_PL: 0 }}
             teamA={match.teamA}
             teamB={match.teamB}
           />
+        ) : (
+          match.finalBook && (
+            <FinalBookCard
+              title={activeTab === 'full' ? 'Final Book (Full History)' : 'Final Book (Latest 5 Minutes)'}
+              finalBook={activeTab === 'full' ? match.finalBook : (match.rollingBook5m || { teamA_PL: 0, teamB_PL: 0 })}
+              teamA={match.teamA}
+              teamB={match.teamB}
+            />
+          )
         )}
 
         {/* Snapshots */}
