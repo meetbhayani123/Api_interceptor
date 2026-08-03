@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { api } from '@/lib/api';
 import { getSocket } from '@/lib/socket';
 import { Spinner } from '@/components/ui/Spinner';
-import { FinalBookCard } from '@/components/match/FinalBookCard';
+import { TeamBookTabs } from '@/components/match/TeamBookTabs';
 import { SnapshotGrid } from '@/components/match/SnapshotGrid';
 
 const SNAPSHOT_WINDOW_SIZE = 30;
@@ -19,7 +19,6 @@ export default function MatchDetailPage() {
   const [match, setMatch] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isPolling, setIsPolling] = useState(false);
-  const [activeTab, setActiveTab] = useState<'full' | 'rolling5m'>('full');
 
   const fetchMatch = useCallback(async (silent = false) => {
     try {
@@ -58,6 +57,7 @@ export default function MatchDetailPage() {
             ...prev,
             finalBook: data.finalBook,
             rollingBook5m: data.rollingBook5m,
+            bookHighLow: data.bookHighLow,
             totalSnapshotCount: data.totalSnapshotCount ?? prev.totalSnapshotCount ?? 0,
           };
         }
@@ -68,6 +68,7 @@ export default function MatchDetailPage() {
           ...prev,
           finalBook: data.finalBook,
           rollingBook5m: data.rollingBook5m,
+          bookHighLow: data.bookHighLow,
           snapshots: nextSnapshots,
           totalSnapshotCount:
             data.totalSnapshotCount ??
@@ -167,37 +168,12 @@ export default function MatchDetailPage() {
           </div>
         </div>
 
-        {/* Book Selection Tabs */}
-        <div className="mb-6">
-          <div className="flex bg-slate-900/40 p-1.5 rounded-xl border border-slate-700/30 gap-1.5 w-full max-w-md">
-            <button
-              onClick={() => setActiveTab('full')}
-              className={`flex-1 py-2 px-4 rounded-lg text-sm font-semibold transition-all duration-200 ${
-                activeTab === 'full'
-                  ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.15)]'
-                  : 'text-slate-400 hover:text-slate-200 border border-transparent'
-              }`}
-            >
-              Full History Book
-            </button>
-            <button
-              onClick={() => setActiveTab('rolling5m')}
-              className={`flex-1 py-2 px-4 rounded-lg text-sm font-semibold transition-all duration-200 ${
-                activeTab === 'rolling5m'
-                  ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.15)]'
-                  : 'text-slate-400 hover:text-slate-200 border border-transparent'
-              }`}
-            >
-              Latest 5 Min Book
-            </button>
-          </div>
-        </div>
-
-        {/* Final Book */}
+        {/* Team High / Low Book Tabs */}
         {match.finalBook && (
-          <FinalBookCard
-            title={activeTab === 'full' ? 'Final Book (Full History)' : 'Final Book (Latest 5 Minutes)'}
-            finalBook={activeTab === 'full' ? match.finalBook : (match.rollingBook5m || { teamA_PL: 0, teamB_PL: 0 })}
+          <TeamBookTabs
+            fullBook={match.finalBook}
+            rollingBook5m={match.rollingBook5m || { teamA_PL: 0, teamB_PL: 0 }}
+            bookHighLow={match.bookHighLow || { teamA_high: 0, teamA_low: 0, teamB_high: 0, teamB_low: 0 }}
             teamA={match.teamA}
             teamB={match.teamB}
           />

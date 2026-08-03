@@ -1,6 +1,6 @@
 import { calculateNetBook, mapRecord } from '@repo/utils';
 import { OddsSnapshot } from '../models/OddsSnapshot.js';
-import type { IBookResult } from '@repo/types';
+import type { IBookResult, IBookHighLow } from '@repo/types';
 
 /**
  * Calculates the final book P/L for a given match from all its snapshots.
@@ -150,3 +150,41 @@ export async function calculateMatchBookInTimeRange(
   };
 }
 
+/**
+ * Calculates the historical high and low of the running cumulative P/L
+ * for each team across all snapshots in chronological order.
+ *
+ * We fetch all snapshots, compute each one's individual P/L contribution,
+ * accumulate a running total, and track the peak/trough.
+ */
+export async function calculateMatchBookHighLow(matchId: string): Promise<IBookHighLow> {
+  const snapshots = await OddsSnapshot.find({ matchId })
+    .sort({ capturedAt: 1 })
+    .select({ teamA: 1, teamB: 1 })
+    .lean();
+
+  let runA = 0;
+  let runB = 0;
+  let highA = 0;
+  let lowA = 0;
+  let highB = 0;
+  let lowB = 0;
+
+  for (const snap of snapshots) {
+    const delta = calculateNetBook([mapRecord(snap)]);
+    runA += delta.teamA_PL;
+    runB += delta.teamB_PL;
+
+    if (runA > highA) highA = runA;
+    if (runA < lowA) lowA = runA;
+    if (runB > highB) highB = runB;
+    if (runB < lowB) lowB = runB;
+  }
+
+  return {
+    teamA_high: highA,
+    teamA_low: lowA,
+    teamB_high: highB,
+    teamB_low: lowB,
+  };
+}

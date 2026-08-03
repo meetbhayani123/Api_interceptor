@@ -50,6 +50,14 @@ export interface IBookResult {
   teamB_PL: number;
 }
 
+// ─── Book High/Low (historical peak & trough of cumulative P/L) ───
+export interface IBookHighLow {
+  teamA_high: number;
+  teamA_low: number;
+  teamB_high: number;
+  teamB_low: number;
+}
+
 // ─── Match Detail (API response with snapshots + book) ───
 export interface IMatchDetail extends IMatch {
   snapshots: IOddsSnapshot[];

@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import { Match } from '../models/Match.js';
 import { OddsSnapshot } from '../models/OddsSnapshot.js';
 import { OddsService } from './OddsService.js';
-import { addBookResults, calculateMatchBook, calculateSnapshotBook, calculateMatchBookInTimeRange } from './BookService.js';
+import { addBookResults, calculateMatchBook, calculateSnapshotBook, calculateMatchBookInTimeRange, calculateMatchBookHighLow } from './BookService.js';
 import { getIO } from '../socket/index.js';
 import { config } from '../config/env.js';
 
@@ -80,13 +80,17 @@ async function executePoll(matchId: string): Promise<void> {
     });
 
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-    const rollingBook5m = await calculateMatchBookInTimeRange(matchId, fiveMinutesAgo);
+    const [rollingBook5m, bookHighLow] = await Promise.all([
+      calculateMatchBookInTimeRange(matchId, fiveMinutesAgo),
+      calculateMatchBookHighLow(matchId),
+    ]);
 
     getIO().to(matchId).emit('odds_update', {
       matchId,
       snapshot,
       finalBook,
       rollingBook5m,
+      bookHighLow,
       totalSnapshotCount: snapshot.sequenceId,
     });
   } catch (error) {

@@ -2,7 +2,7 @@ import type { Request, Response } from 'express';
 import { Match } from '../models/Match.js';
 import { OddsSnapshot } from '../models/OddsSnapshot.js';
 import { OddsService } from '../services/OddsService.js';
-import { calculateMatchBook, calculateMatchBookInTimeRange } from '../services/BookService.js';
+import { calculateMatchBook, calculateMatchBookInTimeRange, calculateMatchBookHighLow } from '../services/BookService.js';
 import { isPolling } from '../services/PollingService.js';
 import { config } from '../config/env.js';
 
@@ -161,7 +161,7 @@ export async function getMatch(req: Request, res: Response) {
     if (!match) return res.status(404).json({ error: 'Match not found' });
 
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-    const [snapshotCountFromDb, latestSnapshotsDesc, rollingBook5m] = await Promise.all([
+    const [snapshotCountFromDb, latestSnapshotsDesc, rollingBook5m, bookHighLow] = await Promise.all([
       match.totalSnapshotCount ?? OddsSnapshot.countDocuments({ matchId: req.params.id }),
       OddsSnapshot.find({ matchId: req.params.id })
         .sort({ capturedAt: -1 })
@@ -169,6 +169,7 @@ export async function getMatch(req: Request, res: Response) {
         .select({ matchId: 1, sequenceId: 1, capturedAt: 1, teamA: 1, teamB: 1 })
         .lean(),
       calculateMatchBookInTimeRange(req.params.id, fiveMinutesAgo),
+      calculateMatchBookHighLow(req.params.id),
     ]);
 
     // Keep payload chronological for consumers that assume oldest -> newest ordering.
@@ -187,7 +188,7 @@ export async function getMatch(req: Request, res: Response) {
       });
     }
 
-    res.json({ ...match, snapshots, totalSnapshotCount, finalBook, rollingBook5m });
+    res.json({ ...match, snapshots, totalSnapshotCount, finalBook, rollingBook5m, bookHighLow });
   } catch (error: any) {
     res.status(500).json({ error: 'Failed to fetch match' });
   }
