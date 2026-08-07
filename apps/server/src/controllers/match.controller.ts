@@ -100,7 +100,8 @@ export async function importMatchDetails(req: Request, res: Response) {
           ...(matchStartTime ? { startTime: matchStartTime } : {}),
         },
         $setOnInsert: {
-          startTime: matchStartTime || new Date(),
+          // Only set startTime here if it's NOT already in $set (to avoid MongoDB conflict)
+          ...(!matchStartTime ? { startTime: new Date() } : {}),
           status: 'upcoming',
           oddsHistory: [],
         },
