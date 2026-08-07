@@ -53,7 +53,10 @@ async function fetchEventFromBrowser(eventId: string) {
  * Extract team names, marketId, and match name from 11xplay event payload.
  */
 function extractEventData(eventId: string, payload: any) {
+  const eventData = payload.data?.event || payload.event || payload;
+
   const runners =
+    eventData?.match_odds?.runners ||
     payload.data?.event?.match_odds?.runners ||
     payload.match_odds?.runners ||
     [];
@@ -63,6 +66,7 @@ function extractEventData(eventId: string, payload: any) {
 
   if (team1 === 'Unknown Team A' && team2 === 'Unknown Team B') {
     const matchName =
+      eventData?.event?.name ||
       payload.data?.event?.event?.name ||
       payload.name ||
       payload.event?.name ||
@@ -81,17 +85,28 @@ function extractEventData(eventId: string, payload: any) {
   }
 
   const marketId =
-    payload.data?.event?.match_odds?.market_id || payload.match_odds?.market_id;
+    eventData?.match_odds?.market_id ||
+    payload.data?.event?.match_odds?.market_id ||
+    payload.match_odds?.market_id;
   const name =
+    eventData?.event?.name ||
     payload.data?.event?.event?.name ||
     payload.name ||
     `${team1} vs ${team2}`;
+
+  // Extract the game start time (open_date) from the API response
+  const startTime =
+    eventData?.event?.open_date ||
+    eventData?.match_odds?.market_start_time ||
+    payload.data?.event?.event?.open_date ||
+    payload.data?.event?.match_odds?.market_start_time ||
+    null;
 
   if (!marketId) {
     throw new Error(`market_id not found in event ${eventId}`);
   }
 
-  return { eventId, team1, team2, marketId, name };
+  return { eventId, team1, team2, marketId, name, startTime };
 }
 
 // ─── Match Endpoints ───
