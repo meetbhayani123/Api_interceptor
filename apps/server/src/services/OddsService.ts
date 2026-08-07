@@ -221,10 +221,18 @@ export class OddsService {
         throw new Error('market_id not explicitly found in match_odds object');
       }
 
+      // Extract game start time from the API response
+      const openDate = data.data?.event?.event?.open_date
+        || data.data?.event?.match_odds?.market_start_time
+        || data.event?.event?.open_date
+        || data.event?.match_odds?.market_start_time
+        || null;
+
       return {
         team1,
         team2,
-        marketId
+        marketId,
+        openDate,
       };
     } catch (error) {
       console.error('OddsService: Error fetching event details:', error);

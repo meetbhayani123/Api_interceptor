@@ -7,6 +7,7 @@ import { initSocketServer } from './socket/index.js';
 import eventRoutes from './routes/event.routes.js';
 import matchRoutes from './routes/match.routes.js';
 import pollingRoutes from './routes/polling.routes.js';
+import { initMatchScheduler } from './services/MatchScheduler.js';
 
 // ─── Express App ───
 const app = express();
@@ -57,6 +58,9 @@ mongoose
 
     httpServer.listen(config.port, () => {
       console.log(`✓ Server listening on port ${config.port}`);
+
+      // Start the match scheduler — auto-polls matches when their startTime arrives
+      initMatchScheduler();
     });
   })
   .catch((error) => {

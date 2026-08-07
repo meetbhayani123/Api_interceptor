@@ -134,11 +134,29 @@ export default function MatchDetailPage() {
         {/* Match Header */}
         <div className="bg-slate-800/40 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl p-6 md:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
           <div>
-            <div className="flex items-center gap-3 mb-2">
+            <div className="flex items-center gap-3 mb-2 flex-wrap">
               <span className="px-3 py-1 text-xs font-semibold rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
                 {match.status?.toUpperCase()}
               </span>
               <span className="text-slate-400 font-mono text-sm">Market: {match.marketId}</span>
+              {match.startTime && (
+                <span className="flex items-center gap-1.5 text-xs text-slate-400">
+                  <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {new Date(match.startTime).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
+                  {(() => {
+                    const diff = new Date(match.startTime).getTime() - Date.now();
+                    if (match.status === 'running') return <span className="ml-1 px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 font-semibold text-[10px]">LIVE</span>;
+                    if (diff > 0) {
+                      const hrs = Math.floor(diff / 3600000);
+                      const mins = Math.floor((diff % 3600000) / 60000);
+                      return <span className="ml-1 px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-400 font-medium text-[10px]">Starts in {hrs > 0 ? `${hrs}h ` : ''}{mins}m</span>;
+                    }
+                    return null;
+                  })()}
+                </span>
+              )}
             </div>
             <h1 className="text-2xl md:text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-slate-100 to-slate-400">
               {match.name}

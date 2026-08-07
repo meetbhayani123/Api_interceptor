@@ -37,6 +37,7 @@ export async function importMatches(req: Request, res: Response) {
       try {
         const details = await oddsService.getEventDetails(eventId);
         const name = `${details.team1} vs ${details.team2}`;
+        const startTime = details.openDate ? new Date(details.openDate) : new Date();
 
         const match = await Match.findOneAndUpdate(
           { eventId },
@@ -46,9 +47,9 @@ export async function importMatches(req: Request, res: Response) {
               name,
               teamA: details.team1,
               teamB: details.team2,
+              startTime,
             },
             $setOnInsert: {
-              startTime: new Date(),
               status: 'upcoming',
               oddsHistory: [],
             },

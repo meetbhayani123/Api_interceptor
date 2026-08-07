@@ -105,9 +105,26 @@ export function MatchCard({ match, onDelete, onTogglePolling }: MatchCardProps) 
             </div>
           </div>
 
-          {/* ── Row 4: Date ── */}
-          <div className="mt-1.5 text-[9px] text-slate-600">
-            {new Date(match.createdAt || match.startTime).toLocaleString()}
+          {/* ── Row 4: Start Time ── */}
+          <div className="mt-1.5 flex items-center gap-1 text-[9px] text-slate-500">
+            <svg className="w-2.5 h-2.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>
+              {match.startTime
+                ? new Date(match.startTime).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
+                : '---'}
+            </span>
+            {match.startTime && (() => {
+              const diff = new Date(match.startTime).getTime() - Date.now();
+              if (match.status === 'running') return <span className="ml-1 px-1 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-semibold">LIVE</span>;
+              if (diff > 0) {
+                const hrs = Math.floor(diff / 3600000);
+                const mins = Math.floor((diff % 3600000) / 60000);
+                return <span className="ml-1 px-1 py-0.5 rounded bg-amber-500/15 text-amber-400 font-medium">in {hrs > 0 ? `${hrs}h ` : ''}{mins}m</span>;
+              }
+              return null;
+            })()}
           </div>
         </div>
       </Link>
