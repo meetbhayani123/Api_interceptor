@@ -105,11 +105,12 @@ export function MatchCard({ match, onDelete, onTogglePolling }: MatchCardProps) 
             </div>
           </div>
 
-          {/* ── Row 4: Start Time ── */}
+          {/* ── Row 4: Start At ── */}
           <div className="mt-1.5 flex items-center gap-1 text-[9px] text-slate-500">
             <svg className="w-2.5 h-2.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
+            <span className="font-semibold text-slate-400">Start At:</span>
             <span>
               {match.startTime
                 ? new Date(match.startTime).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })

@@ -144,6 +144,7 @@ export default function MatchDetailPage() {
                   <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
+                  <span className="font-semibold text-slate-300">Start At:</span>
                   {new Date(match.startTime).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
                   {(() => {
                     const diff = new Date(match.startTime).getTime() - Date.now();
