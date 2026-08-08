@@ -132,7 +132,7 @@ export async function importMatchDetails(req: Request, res: Response) {
 /** GET /api/matches — List all matches */
 export async function listMatches(_req: Request, res: Response) {
   try {
-    const matches = await Match.find().sort({ createdAt: -1 }).lean();
+    const matches = await Match.find().sort({ startTime: 1 }).lean();
     const matchesWithPolling = matches.map((m: any) => ({
       ...m,
       isPolling: isPolling(m._id.toString()),
