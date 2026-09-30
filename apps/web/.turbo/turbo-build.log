@@ -1,34 +1,0 @@
-
-
-> web@1.0.0 build /home/phoenix/Desktop/Api_interceptor/apps/web
-> next build
-
-Attention: Next.js now collects completely anonymous telemetry regarding usage.
-This information is used to shape Next.js' roadmap and prioritize features.
-You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
-https://nextjs.org/telemetry
-
-  ▲ Next.js 14.2.35
-
-   Creating an optimized production build ...
- ✓ Compiled successfully
-   Linting and checking validity of types     ✓ Linting and checking validity of types 
-   Collecting page data     ✓ Collecting page data 
- ✓ Generating static pages (5/5)
-   Collecting build traces     ✓ Collecting build traces 
-   Finalizing page optimization     ✓ Finalizing page optimization 
-
-Route (app)                              Size     First Load JS
-┌ ○ /                                    6.28 kB         115 kB
-├ ○ /_not-found                          872 B          88.2 kB
-├ ƒ /api/import                          0 B                0 B
-└ ƒ /match/[id]                          5.07 kB         114 kB
-+ First Load JS shared by all            87.3 kB
-  ├ chunks/5b8f0dd8-9ce579deb28bc5df.js  53.6 kB
-  ├ chunks/749-26757fa452999330.js       31.7 kB
-  └ other shared chunks (total)          1.96 kB
-
-
-○  (Static)   prerendered as static content
-ƒ  (Dynamic)  server-rendered on demand
-
