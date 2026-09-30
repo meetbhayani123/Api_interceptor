@@ -10,9 +10,10 @@ let io: Server;
 export function initSocketServer(httpServer: HttpServer): Server {
   io = new Server(httpServer, {
     cors: {
-      origin: true, // Allow any origin
+      // Same allow-list as the REST API; null means any origin.
+      origin: config.cors.allowedOrigins ?? true,
       methods: ['GET', 'POST'],
-      credentials: true
+      credentials: true,
     },
   });
 

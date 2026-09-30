@@ -11,12 +11,26 @@ import { initMatchScheduler } from './services/MatchScheduler.js';
 
 // ─── Express App ───
 const app = express();
+
+const { allowedOrigins } = config.cors;
+
+if (!allowedOrigins) {
+  console.warn(
+    '⚠ CORS_ORIGIN is not set — every origin is allowed with credentials. ' +
+    'Set it to your frontend URL(s), comma separated, before exposing this publicly.'
+  );
+} else {
+  console.log(`✓ CORS restricted to: ${allowedOrigins.join(', ')}`);
+}
+
 app.use(cors({
-  origin: function (origin, callback) {
-    // dynamically allow any origin 
-    callback(null, true);
+  origin(origin, callback) {
+    // No Origin header: same-origin, curl, or server-to-server. Not a browser
+    // cross-origin request, so CORS does not apply.
+    if (!origin || !allowedOrigins) return callback(null, true);
+    callback(null, allowedOrigins.includes(origin.replace(/\/$/, '')));
   },
-  credentials: true
+  credentials: true,
 }));
 app.use(express.json());
 

@@ -142,3 +142,8 @@ export async function stopPolling(matchId: string): Promise<void> {
 export function isPolling(matchId: string): boolean {
   return activePolls.has(matchId);
 }
+
+/** Match ids this process is currently polling. */
+export function getActivePollIds(): string[] {
+  return [...activePolls.keys()];
+}

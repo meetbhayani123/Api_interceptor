@@ -1,5 +1,6 @@
 import { Match } from '../models/Match.js';
-import { startPolling, isPolling } from './PollingService.js';
+import { startPolling, stopPolling, isPolling } from './PollingService.js';
+import { config } from '../config/env.js';
 
 /**
  * MatchScheduler — Automatically starts polling for matches ahead of their startTime.
@@ -20,6 +21,11 @@ const DEFAULT_CHECK_INTERVAL_MS = 30_000; // 30 seconds
 // Begin polling this far ahead of the match's startTime.
 const PRE_START_LEAD_MS = 30 * 60_000; // 30 minutes
 
+// A match is considered over this long after its startTime. Polling stops, and
+// matches older than this are never auto-started (so importing last week's
+// fixture does not kick off an endless poll).
+const MAX_POLL_DURATION_MS = config.maxPollHours * 60 * 60_000;
+
 let schedulerInterval: NodeJS.Timeout | null = null;
 let checkIntervalMs = DEFAULT_CHECK_INTERVAL_MS;
 const scheduledTimers = new Map<string, NodeJS.Timeout>();
@@ -35,9 +41,15 @@ export function pollingStartsAt(startTime: Date): number {
   return startTime.getTime() - PRE_START_LEAD_MS;
 }
 
+/** The moment a match is treated as finished and polling is stopped. */
+export function pollingExpiresAt(startTime: Date): number {
+  return startTime.getTime() + MAX_POLL_DURATION_MS;
+}
+
 export type PollingDecision =
   | { action: 'start' }
-  | { action: 'schedule'; delayMs: number };
+  | { action: 'schedule'; delayMs: number }
+  | { action: 'expired' };
 
 /**
  * Decide what to do with a match right now: start polling immediately because
@@ -46,6 +58,9 @@ export type PollingDecision =
  * Pure, so the timing boundaries can be tested without a database.
  */
 export function decidePolling(startTime: Date, now: number): PollingDecision {
+  // Long past its window: the match is over, so never (re)start it.
+  if (now >= pollingExpiresAt(startTime)) return { action: 'expired' };
+
   const delayMs = pollingStartsAt(startTime) - now;
   return delayMs <= 0 ? { action: 'start' } : { action: 'schedule', delayMs };
 }
@@ -68,6 +83,11 @@ async function evaluateMatch(match: SchedulableMatch, now: number): Promise<void
   if (isPolling(matchId)) return;
 
   const decision = decidePolling(match.startTime, now);
+
+  if (decision.action === 'expired') {
+    clearScheduledTimer(matchId);
+    return;
+  }
 
   if (decision.action === 'start') {
     // Lead window already open (or startTime passed) — start right away.
@@ -102,24 +122,68 @@ async function evaluateMatch(match: SchedulableMatch, now: number): Promise<void
 }
 
 /**
- * Periodic sweep: find every upcoming match whose lead window is open,
- * or opens before the next sweep, and start or schedule it.
+ * Stop matches whose polling window has elapsed.
+ *
+ * Nothing else ever stops polling — without this a started match runs until the
+ * process dies. This also settles records left at 'running' by a crash, whether
+ * or not this process happens to be polling them.
+ */
+async function stopFinishedMatches(now: Date): Promise<void> {
+  const expiredBefore = new Date(now.getTime() - MAX_POLL_DURATION_MS);
+
+  const finished = await Match.find({
+    status: 'running',
+    startTime: { $lt: expiredBefore },
+  })
+    .select({ _id: 1, name: 1 })
+    .lean();
+
+  for (const match of finished) {
+    const matchId = match._id.toString();
+    clearScheduledTimer(matchId);
+    console.log(
+      `[MatchScheduler] 🏁 Stopping "${match.name}" — more than ${config.maxPollHours}h past start.`
+    );
+    await stopPolling(matchId);
+  }
+}
+
+/**
+ * Periodic sweep.
+ *
+ * Covers three cases:
+ *   - 'upcoming' matches whose lead window is open, or opens before the next sweep
+ *   - 'running' matches this process is NOT polling, i.e. orphaned by a restart.
+ *     activePolls lives in memory, so without this a restart would strand every
+ *     in-flight match: no timer, and previously invisible to this query.
+ *   - matches past their window, which get stopped.
  */
 async function checkAndStartMatches(): Promise<void> {
   try {
     const now = new Date();
-    // Look one sweep beyond the lead window so timers are armed slightly early
-    // rather than being missed between sweeps.
-    const horizon = new Date(now.getTime() + PRE_START_LEAD_MS + checkIntervalMs);
 
-    const readyMatches = await Match.find({
-      status: 'upcoming',
-      startTime: { $lte: horizon },
+    await stopFinishedMatches(now);
+
+    // Look one sweep beyond the lead window so timers are armed slightly early
+    // rather than being missed between sweeps, and no further back than the
+    // polling window, so old imports are not resurrected.
+    const notBefore = new Date(now.getTime() - MAX_POLL_DURATION_MS);
+    const notAfter = new Date(now.getTime() + PRE_START_LEAD_MS + checkIntervalMs);
+
+    const candidates = await Match.find({
+      status: { $in: ['upcoming', 'running'] },
+      startTime: { $gte: notBefore, $lte: notAfter },
     })
-      .select({ _id: 1, name: 1, startTime: 1 })
+      .select({ _id: 1, name: 1, startTime: 1, status: 1 })
       .lean();
 
-    for (const match of readyMatches) {
+    for (const match of candidates) {
+      const matchId = match._id.toString();
+
+      if (match.status === 'running' && !isPolling(matchId)) {
+        console.log(`[MatchScheduler] ♻️  Resuming "${match.name}" — marked running but not polling (restart recovery).`);
+      }
+
       await evaluateMatch(match, now.getTime());
     }
   } catch (error) {
@@ -139,7 +203,7 @@ export async function scheduleMatchById(matchId: string): Promise<void> {
       .select({ _id: 1, name: 1, startTime: 1, status: 1 })
       .lean();
 
-    if (!match || match.status !== 'upcoming') return;
+    if (!match || match.status === 'completed') return;
 
     clearScheduledTimer(matchId);
     await evaluateMatch(match, Date.now());
@@ -161,7 +225,7 @@ export function initMatchScheduler(intervalMs: number = DEFAULT_CHECK_INTERVAL_M
 
   console.log(
     `[MatchScheduler] ✓ Started — checking for upcoming matches every ${checkIntervalMs / 1000}s ` +
-    `(polling starts ${PRE_START_LEAD_MS / 60_000}m before each match's startTime)`
+    `(polling starts ${PRE_START_LEAD_MS / 60_000}m before startTime, stops ${config.maxPollHours}h after)`
   );
 
   // Run immediately on startup, then repeat at the interval

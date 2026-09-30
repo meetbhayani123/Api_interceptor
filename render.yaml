@@ -20,14 +20,19 @@ services:
         value: 3001
       - key: POLLING_INTERVAL_MS
         value: 3000
+      # A match stops polling this many hours after its startTime, and matches
+      # older than this are never auto-started. Raise for longer formats.
+      - key: MAX_POLL_HOURS
+        value: 12
       - key: NODE_OPTIONS
         value: --max-old-space-size=400
       # ── Set these manually in the Render dashboard (never hardcode secrets) ──
       - key: MONGO_URI
         sync: false          # Render will prompt you to fill this in
       - key: DELETE_PASSWORD
-        sync: false
+        sync: false          # REQUIRED: deletion is refused entirely when unset.
       - key: CORS_ORIGIN
-        sync: false          # Set to your Vercel frontend URL after deploying web
+        sync: false          # REQUIRED: your Vercel frontend URL(s), comma separated.
+                             # Left unset, the API accepts requests from ANY origin.
       - key: SCRAPER_API_KEY
         sync: false          # OPTIONAL: Get from https://www.scraperapi.com (free tier available)

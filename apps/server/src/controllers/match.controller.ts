@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import type { Request, Response } from 'express';
 import { Match } from '../models/Match.js';
 import { OddsSnapshot } from '../models/OddsSnapshot.js';
@@ -10,6 +11,17 @@ import { config } from '../config/env.js';
 const SNAPSHOT_WINDOW_SIZE = 30;
 
 const oddsService = new OddsService();
+
+/**
+ * Constant-time password check. Hashing first keeps both inputs the same
+ * length, so timingSafeEqual cannot throw and the comparison leaks nothing
+ * about the expected value's length.
+ */
+function matchesDeletePassword(candidate: string): boolean {
+  const a = crypto.createHash('sha256').update(candidate).digest();
+  const b = crypto.createHash('sha256').update(config.deletePassword).digest();
+  return crypto.timingSafeEqual(a, b);
+}
 
 /** POST /api/match/import — Import matches from event IDs */
 export async function importMatches(req: Request, res: Response) {
@@ -226,7 +238,13 @@ export async function deleteMatch(req: Request, res: Response) {
     const matchId = req.params.id;
     const { password } = req.body;
 
-    if (!password || password !== config.deletePassword) {
+    if (!config.deletePassword) {
+      return res.status(503).json({
+        error: 'Deletion is disabled: DELETE_PASSWORD is not configured on the server.',
+      });
+    }
+
+    if (typeof password !== 'string' || !matchesDeletePassword(password)) {
       return res.status(401).json({ error: 'Unauthorized: Invalid password' });
     }
 
