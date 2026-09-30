@@ -7,6 +7,7 @@ import { ImportPanel } from '@/components/dashboard/ImportPanel';
 import { MatchCard } from '@/components/dashboard/MatchCard';
 import { MatchCardSkeleton } from '@/components/dashboard/MatchCardSkeleton';
 import { DeleteModal } from '@/components/modals/DeleteModal';
+import { Card } from '@/components/ui/Card';
 
 export default function DashboardPage() {
   const [matches, setMatches] = useState<any[]>([]);
@@ -77,10 +78,10 @@ export default function DashboardPage() {
         <ImportPanel onImportSuccess={fetchMatches} />
 
         {/* Matches List */}
-        <section className="w-full bg-slate-800/40 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-xl flex flex-col overflow-hidden">
-          <div className="p-4 border-b border-slate-700/50 bg-slate-800/60 flex justify-between items-center gap-3">
+        <Card padding="none" className="w-full flex flex-col overflow-hidden">
+          <div className="p-4 border-b border-subtle/50 bg-surface/60 flex justify-between items-center gap-3">
             <h2 className="text-base sm:text-lg font-bold flex items-center gap-2 min-w-0">
-              <svg className="w-5 h-5 text-cyan-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+              <svg className="w-5 h-5 text-accent shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
               </svg>
               <span className="truncate">Recent Matches</span>
@@ -96,7 +97,7 @@ export default function DashboardPage() {
             {error && (
               <div
                 role="alert"
-                className="mb-3 p-3 rounded-xl bg-rose-900/20 border border-rose-500/30 text-rose-200 text-sm flex items-start gap-2"
+                className="mb-3 p-3 rounded-xl bg-danger/10 border border-danger/30 text-rose-200 text-sm flex items-start gap-2"
               >
                 <svg className="w-5 h-5 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -104,7 +105,7 @@ export default function DashboardPage() {
                 <span className="flex-1 min-w-0">{error}</span>
                 <button
                   onClick={fetchMatches}
-                  className="shrink-0 px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 text-xs font-semibold focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:outline-none"
+                  className="shrink-0 px-2.5 py-1 rounded-lg bg-danger/20 hover:bg-danger/30 text-rose-100 text-xs font-semibold focus-visible:ring-2 focus-visible:ring-danger focus-visible:outline-none"
                 >
                   Retry
                 </button>
@@ -137,7 +138,7 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
-        </section>
+        </Card>
       </div>
 
       {/* Delete Modal */}

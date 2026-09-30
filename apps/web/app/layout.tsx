@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 // @ts-ignore - Next.js handles CSS imports, suppressing TS error for Vercel build
 import './globals.css';
-import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 
 const inter = Inter({

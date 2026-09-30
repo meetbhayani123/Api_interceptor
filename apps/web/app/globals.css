@@ -3,10 +3,27 @@
 @tailwind utilities;
 
 /* ─── Design System Tokens ─── */
+/* Channel triplets so Tailwind can apply its own opacity modifiers,
+   e.g. bg-surface/40, border-subtle/50. */
 :root {
   --color-bg: #0B0F1A;
-  --color-surface: #0F172A;
-  --color-border: rgba(51, 65, 85, 0.5);
+
+  --surface: 30 41 59;        /* panels */
+  --surface-raised: 15 23 42; /* panels sitting on panels */
+  --subtle: 51 65 85;         /* hairline borders */
+
+  --accent: 6 182 212;        /* interactive / brand */
+
+  /* Money. Reserved for profit and loss — nothing else. */
+  --profit: 52 211 153;
+  --loss: 244 63 94;
+
+  /* Betting-exchange convention for the two sides of a market. */
+  --back: 96 165 250;
+  --lay: 244 114 182;
+
+  /* Destructive actions. Deliberately NOT --loss, so red keeps one meaning. */
+  --danger: 225 29 72;
 }
 
 /* ─── Base Reset ─── */

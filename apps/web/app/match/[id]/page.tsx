@@ -10,6 +10,7 @@ import { FinalBookCard } from '@/components/match/FinalBookCard';
 import { HighLowBookCard } from '@/components/match/HighLowBookCard';
 import { SnapshotGrid } from '@/components/match/SnapshotGrid';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { Card } from '@/components/ui/Card';
 import { getDisplayStatus, getCountdown } from '@/lib/format';
 import { useNow } from '@/lib/useNow';
 
@@ -130,7 +131,7 @@ export default function MatchDetailPage() {
         {/* Back Link */}
         <Link
           href="/"
-          className="inline-flex items-center min-h-[44px] -ml-1 pl-1 pr-2 rounded-lg text-cyan-400 hover:text-cyan-300 transition-colors mb-2 sm:mb-4 group font-medium text-sm focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none"
+          className="inline-flex items-center min-h-[44px] -ml-1 pl-1 pr-2 rounded-lg text-accent hover:brightness-125 transition-colors mb-2 sm:mb-4 group font-medium text-sm focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
         >
           <svg className="w-4 h-4 mr-1.5 group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
@@ -139,7 +140,7 @@ export default function MatchDetailPage() {
         </Link>
 
         {/* Match Header */}
-        <div className="bg-slate-800/40 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl p-4 sm:p-6 md:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sm:gap-6 mb-6 sm:mb-8">
+        <Card className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sm:gap-6 mb-6 sm:mb-8">
           <div>
             <div className="flex items-center gap-3 mb-2 flex-wrap">
               <StatusBadge status={displayStatus} />
@@ -165,26 +166,26 @@ export default function MatchDetailPage() {
               {match.name}
             </h1>
             {displayStatus === 'capturing' && (
-              <p className="mt-1.5 text-xs text-cyan-400/80">
+              <p className="mt-1.5 text-xs text-accent/80">
                 Capturing odds ahead of start — polling begins 30 minutes before the scheduled time.
               </p>
             )}
           </div>
 
           {/* Polling Toggle */}
-          <div className="flex bg-slate-900/50 p-1 rounded-xl border border-slate-700/50 self-stretch md:self-auto w-full md:w-auto md:min-w-[180px]">
+          <div className="flex bg-surface-raised/50 p-1 rounded-xl border border-subtle/50 self-stretch md:self-auto w-full md:w-auto md:min-w-[180px]">
             {isPolling ? (
               <button
                 onClick={handleStopPolling}
-                className="flex-1 min-h-[48px] px-6 py-3 rounded-lg bg-red-500/20 text-red-400 font-semibold flex items-center justify-center gap-2 hover:bg-red-500/30 transition-colors border border-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.2)] focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:outline-none"
+                className="flex-1 min-h-[48px] px-6 py-3 rounded-lg bg-slate-700/40 text-slate-200 font-semibold flex items-center justify-center gap-2 hover:bg-slate-700/60 transition-colors border border-subtle/60 focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
               >
-                <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
+                <span className="w-2 h-2 rounded-full bg-profit animate-pulse" />
                 Stop Polling
               </button>
             ) : (
               <button
                 onClick={handleStartPolling}
-                className="flex-1 min-h-[48px] px-6 py-3 rounded-lg bg-emerald-500/20 text-emerald-400 font-semibold flex items-center justify-center gap-2 hover:bg-emerald-500/30 transition-colors border border-emerald-500/30 focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none"
+                className="flex-1 min-h-[48px] px-6 py-3 rounded-lg bg-accent/15 text-accent font-semibold flex items-center justify-center gap-2 hover:bg-accent/25 transition-colors border border-accent/30 focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
@@ -194,16 +195,16 @@ export default function MatchDetailPage() {
               </button>
             )}
           </div>
-        </div>
+        </Card>
 
         {/* Book Selection Tabs */}
         <div className="mb-6">
-          <div role="tablist" className="flex bg-slate-900/40 p-1.5 rounded-xl border border-slate-700/30 gap-1 sm:gap-1.5 w-full max-w-2xl">
+          <div role="tablist" className="flex bg-surface-raised/40 p-1.5 rounded-xl border border-subtle/30 gap-1 sm:gap-1.5 w-full max-w-2xl">
             <button
               onClick={() => setActiveTab('full')}
-              className={`flex-1 min-h-[44px] py-2 px-2 sm:px-4 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-200 focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none ${
+              className={`flex-1 min-h-[44px] py-2 px-2 sm:px-4 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-200 focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none ${
                 activeTab === 'full'
-                  ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.15)]'
+                  ? 'bg-accent/20 text-accent border border-accent/30'
                   : 'text-slate-400 hover:text-slate-200 border border-transparent'
               }`}
             >
@@ -212,9 +213,9 @@ export default function MatchDetailPage() {
             </button>
             <button
               onClick={() => setActiveTab('rolling5m')}
-              className={`flex-1 min-h-[44px] py-2 px-2 sm:px-4 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-200 focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none ${
+              className={`flex-1 min-h-[44px] py-2 px-2 sm:px-4 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-200 focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none ${
                 activeTab === 'rolling5m'
-                  ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.15)]'
+                  ? 'bg-accent/20 text-accent border border-accent/30'
                   : 'text-slate-400 hover:text-slate-200 border border-transparent'
               }`}
             >
@@ -225,7 +226,7 @@ export default function MatchDetailPage() {
               onClick={() => setActiveTab('highlow')}
               className={`flex-1 min-h-[44px] py-2 px-2 sm:px-4 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-1.5 focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none ${
                 activeTab === 'highlow'
-                  ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.15)]'
+                  ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
                   : 'text-slate-400 hover:text-slate-200 border border-transparent'
               }`}
             >
@@ -254,7 +255,7 @@ export default function MatchDetailPage() {
             teamB={match.teamB}
           />
         ) : (
-          <div className="bg-slate-800/20 border border-slate-700/30 border-dashed rounded-2xl p-10 mb-8 text-center">
+          <div className="bg-surface/20 border border-subtle/30 border-dashed rounded-2xl p-10 mb-8 text-center">
             <p className="text-slate-400">No book yet.</p>
             <p className="text-sm text-slate-600 mt-1">
               The book is calculated from captured snapshots — it appears once polling records its first frame.

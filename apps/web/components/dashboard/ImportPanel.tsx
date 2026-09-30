@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { api } from '@/lib/api';
 import { Spinner } from '@/components/ui/Spinner';
+import { Card } from '@/components/ui/Card';
 
 interface ImportPanelProps {
   onImportSuccess: () => void;
@@ -33,10 +34,10 @@ export function ImportPanel({ onImportSuccess }: ImportPanelProps) {
   };
 
   return (
-    <div className="bg-slate-800/40 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl p-4 sm:p-6 transition-all duration-500 hover:shadow-cyan-500/10 hover:border-cyan-500/30 group">
+    <Card padding="sm" className="transition-colors duration-300 hover:border-accent/30 group">
       <div className="text-center mb-4 sm:mb-6">
-        <div className="inline-flex items-center justify-center p-3 bg-cyan-500/10 rounded-xl mb-3 group-hover:scale-110 transition-transform duration-300">
-          <svg className="w-7 h-7 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="inline-flex items-center justify-center p-3 bg-accent/10 rounded-xl mb-3 group-hover:scale-110 transition-transform duration-300">
+          <svg className="w-7 h-7 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
           </svg>
         </div>
@@ -59,7 +60,7 @@ export function ImportPanel({ onImportSuccess }: ImportPanelProps) {
             rows={3}
             value={eventIds}
             onChange={(e) => setEventIds(e.target.value)}
-            className="block w-full px-4 py-3 bg-slate-900/50 border border-slate-700/80 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 outline-none transition-all text-white placeholder-slate-500 font-mono text-sm resize-none"
+            className="block w-full px-4 py-3 bg-surface-raised/50 border border-subtle/80 rounded-xl focus:ring-2 focus:ring-accent focus:border-accent outline-none transition-all text-white placeholder-slate-500 font-mono text-sm resize-none"
             placeholder="e.g. 33170560, 33171000"
           />
         </div>
@@ -70,7 +71,7 @@ export function ImportPanel({ onImportSuccess }: ImportPanelProps) {
           className={`w-full py-3 px-4 rounded-xl font-medium flex items-center justify-center gap-2 transition-all duration-300 
             ${loading || !eventIds.trim()
               ? 'bg-slate-700/50 text-slate-500 cursor-not-allowed border border-slate-600/50'
-              : 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:shadow-[0_0_25px_rgba(6,182,212,0.5)] active:scale-[0.98]'
+              : 'bg-accent hover:brightness-110 text-slate-950 active:scale-[0.98]'
             }`}
         >
           {loading ? <><Spinner size="sm" /> Processing...</> : 'Import Matches'}
@@ -78,7 +79,7 @@ export function ImportPanel({ onImportSuccess }: ImportPanelProps) {
       </form>
 
       {error && (
-        <div className="mt-4 p-3 rounded-xl bg-red-900/20 border border-red-500/30 text-red-300 text-sm flex items-start gap-2">
+        <div className="mt-4 p-3 rounded-xl bg-danger/10 border border-danger/30 text-rose-200 text-sm flex items-start gap-2">
           <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
@@ -89,20 +90,20 @@ export function ImportPanel({ onImportSuccess }: ImportPanelProps) {
       {result && (
         <div className="mt-4 space-y-3">
           {/* Success summary */}
-          <div className={`p-4 rounded-xl border ${result.errors?.length ? 'bg-amber-900/20 border-amber-500/30' : 'bg-cyan-900/20 border-cyan-500/30'}`}>
+          <div className={`p-4 rounded-xl border ${result.errors?.length ? 'bg-amber-900/20 border-amber-500/30' : 'bg-accent/10 border-accent/30'}`}>
             <div className="flex items-center gap-2 mb-1">
-              <div className={`h-6 w-6 rounded-full flex items-center justify-center ${result.errors?.length ? 'bg-amber-500/20' : 'bg-cyan-500/20'}`}>
+              <div className={`h-6 w-6 rounded-full flex items-center justify-center ${result.errors?.length ? 'bg-amber-500/20' : 'bg-accent/20'}`}>
                 {result.errors?.length ? (
                   <svg className="w-3.5 h-3.5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.27 16.5c-.77.833.192 2.5 1.732 2.5z" />
                   </svg>
                 ) : (
-                  <svg className="w-3.5 h-3.5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-3.5 h-3.5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                   </svg>
                 )}
               </div>
-              <h3 className={`font-semibold text-sm ${result.errors?.length ? 'text-amber-400' : 'text-cyan-400'}`}>
+              <h3 className={`font-semibold text-sm ${result.errors?.length ? 'text-amber-400' : 'text-accent'}`}>
                 {result.errors?.length ? 'Import Completed with Errors' : 'Import Finished'}
               </h3>
             </div>
@@ -134,6 +135,6 @@ export function ImportPanel({ onImportSuccess }: ImportPanelProps) {
           )}
         </div>
       )}
-    </div>
+    </Card>
   );
 }

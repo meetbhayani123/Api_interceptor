@@ -25,10 +25,8 @@ export function HighLowBookCard({ bookHighLow, currentBook, teamA, teamB }: High
   const teamBName = teamB || 'Team B';
 
   return (
-    <div className="bg-slate-800/40 backdrop-blur-xl border border-amber-500/30 rounded-2xl p-4 sm:p-6 md:p-8 mb-6 sm:mb-8 shadow-[0_0_30px_rgba(245,158,11,0.1)] relative overflow-hidden group">
-      <div className="absolute inset-0 bg-gradient-to-r from-amber-500/5 to-orange-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-
-      <h2 className="text-base sm:text-xl font-bold flex items-center gap-2 sm:gap-3 border-b border-slate-700/50 pb-3 sm:pb-4 mb-4 sm:mb-6 relative z-10">
+    <div className="bg-surface/40 backdrop-blur-xl border border-amber-500/30 rounded-2xl p-4 sm:p-6 md:p-8 mb-6 sm:mb-8 relative overflow-hidden">
+            <h2 className="text-base sm:text-xl font-bold flex items-center gap-2 sm:gap-3 border-b border-subtle/50 pb-3 sm:pb-4 mb-4 sm:mb-6 relative z-10">
         <svg className="w-5 h-5 sm:w-6 sm:h-6 text-amber-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
         </svg>
@@ -72,7 +70,7 @@ function TeamHighLowPanel({
   const pct = range > 0 ? ((current - low) / range) * 100 : 50;
 
   return (
-    <div className="bg-slate-900/60 border border-slate-700/50 rounded-xl p-4 sm:p-5 min-w-0">
+    <div className="bg-surface-raised/60 border border-subtle/50 rounded-xl p-4 sm:p-5 min-w-0">
       {/* Team name */}
       <div className="text-sm font-bold text-slate-300 mb-4 flex items-center gap-2 min-w-0">
         <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
@@ -82,7 +80,7 @@ function TeamHighLowPanel({
       {/* High */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="w-4 h-4 text-profit" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 10l7-7m0 0l7 7m-7-7v18" />
           </svg>
           <span className="text-[11px] sm:text-xs text-slate-500 font-semibold uppercase tracking-wider">All-Time High</span>
@@ -92,8 +90,8 @@ function TeamHighLowPanel({
           format={formatCurrency}
           className={`text-lg sm:text-xl font-black shrink-0 ${
             high >= 0
-              ? 'text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]'
-              : 'text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.3)]'
+              ? 'text-profit'
+              : 'text-loss'
           }`}
         />
       </div>
@@ -101,7 +99,7 @@ function TeamHighLowPanel({
       {/* Low */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <svg className="w-4 h-4 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="w-4 h-4 text-loss" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
           </svg>
           <span className="text-[11px] sm:text-xs text-slate-500 font-semibold uppercase tracking-wider">All-Time Low</span>
@@ -111,34 +109,34 @@ function TeamHighLowPanel({
           format={formatCurrency}
           className={`text-lg sm:text-xl font-black shrink-0 ${
             low >= 0
-              ? 'text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]'
-              : 'text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.3)]'
+              ? 'text-profit'
+              : 'text-loss'
           }`}
         />
       </div>
 
       {/* Visual gauge bar */}
       <div className="mb-3">
-        <div className="h-2 bg-slate-800 rounded-full overflow-hidden relative">
+        <div className="h-2 bg-surface-raised rounded-full overflow-hidden relative">
           <div
-            className="absolute inset-y-0 left-0 bg-gradient-to-r from-rose-500 via-amber-500 to-emerald-500 rounded-full transition-all duration-500"
+            className="absolute inset-y-0 left-0 bg-gradient-to-r from-loss via-amber-500 to-profit rounded-full transition-all duration-500"
             style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
           />
         </div>
         <div className="flex justify-between mt-1">
-          <span className="text-[11px] text-rose-400/60 font-mono">Low</span>
-          <span className="text-[11px] text-emerald-400/60 font-mono">High</span>
+          <span className="text-[11px] text-loss/60 font-mono">Low</span>
+          <span className="text-[11px] text-profit/60 font-mono">High</span>
         </div>
       </div>
 
       {/* Current */}
-      <div className="flex items-center justify-between pt-3 border-t border-slate-700/30">
+      <div className="flex items-center justify-between pt-3 border-t border-subtle/30">
         <span className="text-[11px] sm:text-xs text-slate-500 font-semibold uppercase tracking-wider">Current</span>
         <LiveNumber
           value={current}
           format={formatCurrency}
           className={`text-base sm:text-lg font-bold shrink-0 ${
-            current >= 0 ? 'text-emerald-400' : 'text-rose-400'
+            current >= 0 ? 'text-profit' : 'text-loss'
           }`}
         />
       </div>

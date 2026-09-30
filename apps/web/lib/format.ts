@@ -74,14 +74,14 @@ export function getCountdown(startTime: string | Date | undefined, now: number |
 export function getStatusStyles(status: DisplayStatus | string): string {
   switch ((status || '').toLowerCase()) {
     case 'live':
-      return 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30';
+      return 'bg-profit/15 text-profit border-profit/30';
     case 'capturing':
-      return 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30';
+      return 'bg-accent/15 text-accent border-accent/30';
     case 'completed':
-      return 'bg-slate-500/15 text-slate-400 border-slate-500/30';
+      return 'bg-slate-500/15 text-slate-400 border-subtle/50';
     case 'upcoming':
     default:
-      return 'bg-slate-700/40 text-slate-300 border-slate-600/40';
+      return 'bg-slate-700/40 text-slate-300 border-subtle/60';
   }
 }
 
@@ -91,9 +91,9 @@ export function getStatusStyles(status: DisplayStatus | string): string {
 export function getStatusDot(status: DisplayStatus | string): string {
   switch ((status || '').toLowerCase()) {
     case 'live':
-      return 'bg-emerald-400 animate-pulse';
+      return 'bg-profit animate-pulse';
     case 'capturing':
-      return 'bg-cyan-400 animate-pulse';
+      return 'bg-accent animate-pulse';
     case 'completed':
       return 'bg-slate-400';
     case 'upcoming':

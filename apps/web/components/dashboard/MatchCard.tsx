@@ -29,7 +29,7 @@ export function MatchCard({ match, onDelete, onTogglePolling }: MatchCardProps) 
       {/* Delete button */}
       <button
         onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(match); }}
-        className="absolute top-1.5 right-1.5 z-20 p-1.5 rounded-full bg-slate-800/90 text-slate-500 hover:bg-rose-500 hover:text-white border border-slate-700/50 hover:border-transparent opacity-70 sm:opacity-0 group-hover/card:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:outline-none transition-all duration-200 after:absolute after:-inset-2.5 after:content-['']"
+        className="absolute top-1.5 right-1.5 z-20 p-1.5 rounded-full bg-surface/90 text-slate-500 hover:bg-danger hover:text-white border border-subtle/50 hover:border-transparent opacity-70 sm:opacity-0 group-hover/card:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-danger focus-visible:outline-none transition-all duration-200 after:absolute after:-inset-2.5 after:content-['']"
         title="Delete Match"
         aria-label={`Delete ${match.name}`}
       >
@@ -39,8 +39,8 @@ export function MatchCard({ match, onDelete, onTogglePolling }: MatchCardProps) 
       </button>
 
       <Link href={`/match/${match._id}`} className="block">
-        <div className={`rounded-lg bg-slate-900/60 border border-slate-700/50 hover:border-cyan-500/30 transition-all relative overflow-hidden ${
-          isRunning ? 'border-l-2 border-l-emerald-500' : 'border-l-2 border-l-cyan-500/50'
+        <div className={`rounded-lg bg-surface-raised/60 border border-subtle/50 hover:border-accent/30 transition-all relative overflow-hidden ${
+          isRunning ? 'border-l-2 border-l-profit' : 'border-l-2 border-l-accent/50'
         }`}>
 
           {/* ── Top: Match Name ── */}
@@ -83,24 +83,24 @@ export function MatchCard({ match, onDelete, onTogglePolling }: MatchCardProps) 
               <div className="flex gap-1.5">
                 {/* Team A PL */}
                 <div className={`flex-1 min-w-0 flex flex-col xs:flex-row xs:items-center xs:justify-between gap-0.5 xs:gap-2 px-2 py-1.5 rounded ${
-                  teamA_PL >= 0 ? 'bg-emerald-500/10' : 'bg-rose-500/10'
+                  teamA_PL >= 0 ? 'bg-profit/10' : 'bg-loss/10'
                 }`}>
                   <span className="text-[11px] text-slate-400 truncate">{match.teamA}</span>
                   <LiveNumber
                     value={teamA_PL}
                     format={signed}
-                    className={`text-base font-bold shrink-0 ${teamA_PL >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}
+                    className={`text-base font-bold shrink-0 ${teamA_PL >= 0 ? 'text-profit' : 'text-loss'}`}
                   />
                 </div>
                 {/* Team B PL */}
                 <div className={`flex-1 min-w-0 flex flex-col xs:flex-row xs:items-center xs:justify-between gap-0.5 xs:gap-2 px-2 py-1.5 rounded ${
-                  teamB_PL >= 0 ? 'bg-emerald-500/10' : 'bg-rose-500/10'
+                  teamB_PL >= 0 ? 'bg-profit/10' : 'bg-loss/10'
                 }`}>
                   <span className="text-[11px] text-slate-400 truncate">{match.teamB}</span>
                   <LiveNumber
                     value={teamB_PL}
                     format={signed}
-                    className={`text-base font-bold shrink-0 ${teamB_PL >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}
+                    className={`text-base font-bold shrink-0 ${teamB_PL >= 0 ? 'text-profit' : 'text-loss'}`}
                   />
                 </div>
               </div>
@@ -118,15 +118,15 @@ export function MatchCard({ match, onDelete, onTogglePolling }: MatchCardProps) 
             {onTogglePolling && (
               <button
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); onTogglePolling(match._id, match.isPolling); }}
-                className={`relative shrink-0 px-3 py-1.5 sm:px-2.5 rounded border text-[11px] font-semibold flex items-center gap-1 transition-colors focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none after:absolute after:-inset-1.5 after:content-[''] ${
+                className={`relative shrink-0 px-3 py-1.5 sm:px-2.5 rounded border text-[11px] font-semibold flex items-center gap-1 transition-colors focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none after:absolute after:-inset-1.5 after:content-[''] ${
                   match.isPolling
-                    ? 'bg-rose-500/15 text-rose-400 border-rose-500/30 hover:bg-rose-500/25'
-                    : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/25'
+                    ? 'bg-slate-700/40 text-slate-200 border-subtle/60 hover:bg-slate-700/60'
+                    : 'bg-accent/15 text-accent border-accent/30 hover:bg-accent/25'
                 }`}
               >
                 {match.isPolling ? (
                   <>
-                    <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-profit animate-pulse" />
                     Stop
                   </>
                 ) : (
