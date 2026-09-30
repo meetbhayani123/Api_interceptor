@@ -1,8 +1,9 @@
 import mongoose, { Schema, Document } from 'mongoose';
-import type { IMatch, IOddsEntry, IBookResult } from '@repo/types';
+import type { IMatch, IOddsEntry, IBookResult, IBookHighLow } from '@repo/types';
 
 export interface IMatchDocument extends Omit<IMatch, '_id'>, Document {
   finalBook?: IBookResult;
+  bookHighLow?: IBookHighLow;
   totalSnapshotCount?: number;
 }
 
@@ -30,6 +31,8 @@ const MatchSchema = new Schema<IMatchDocument>({
   },
   oddsHistory: [OddsEntrySchema],
   finalBook: { type: Schema.Types.Mixed, required: false },
+  // Cached cumulative peak/trough, extended per poll instead of rescanning history.
+  bookHighLow: { type: Schema.Types.Mixed, required: false },
   totalSnapshotCount: { type: Number, min: 0, default: 0 },
 } as any, { timestamps: true });
 

@@ -40,6 +40,7 @@ export interface IMatch {
   status: MatchStatus;
   oddsHistory: IOddsEntry[];
   finalBook?: IBookResult;
+  bookHighLow?: IBookHighLow;
   totalSnapshotCount?: number;
   createdAt?: Date;
   updatedAt?: Date;

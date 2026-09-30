@@ -164,6 +164,7 @@ export async function getMatch(req: Request, res: Response) {
         pollingStartedAt: 1,
         status: 1,
         finalBook: 1,
+        bookHighLow: 1,
         totalSnapshotCount: 1,
         createdAt: 1,
         updatedAt: 1,
@@ -172,32 +173,45 @@ export async function getMatch(req: Request, res: Response) {
 
     if (!match) return res.status(404).json({ error: 'Match not found' });
 
+    const matchId = req.params.id;
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-    const [snapshotCountFromDb, latestSnapshotsDesc, rollingBook5m, bookHighLow] = await Promise.all([
-      match.totalSnapshotCount ?? OddsSnapshot.countDocuments({ matchId: req.params.id }),
-      OddsSnapshot.find({ matchId: req.params.id })
+
+    // A stored count of 0 is ambiguous — it is also the schema default — so
+    // recount only in that case rather than trusting it. (`??` would not, since
+    // 0 is not nullish.)
+    const hasStoredCount = typeof match.totalSnapshotCount === 'number' && match.totalSnapshotCount > 0;
+
+    const [snapshotCountFromDb, latestSnapshotsDesc, rollingBook5m, resolvedHighLow] = await Promise.all([
+      hasStoredCount
+        ? Promise.resolve(match.totalSnapshotCount as number)
+        : OddsSnapshot.countDocuments({ matchId }),
+      OddsSnapshot.find({ matchId })
         .sort({ capturedAt: -1 })
         .limit(SNAPSHOT_WINDOW_SIZE)
         .select({ matchId: 1, sequenceId: 1, capturedAt: 1, teamA: 1, teamB: 1 })
         .lean(),
-      calculateMatchBookInTimeRange(req.params.id, fiveMinutesAgo),
-      calculateMatchBookHighLow(req.params.id),
+      calculateMatchBookInTimeRange(matchId, fiveMinutesAgo),
+      // Cached by the poll loop; scanned only for matches predating the cache.
+      match.bookHighLow ?? calculateMatchBookHighLow(matchId),
     ]);
 
     // Keep payload chronological for consumers that assume oldest -> newest ordering.
     const snapshots = latestSnapshotsDesc.reverse();
     const totalSnapshotCount = snapshotCountFromDb;
+    const bookHighLow = resolvedHighLow;
     let finalBook = match.finalBook;
 
+    // Backfill anything this match was missing, so the next read is a plain lookup.
+    const backfill: Record<string, unknown> = {};
     if (!finalBook) {
-      finalBook = await calculateMatchBook(req.params.id);
+      finalBook = await calculateMatchBook(matchId);
+      backfill.finalBook = finalBook;
+      backfill.totalSnapshotCount = totalSnapshotCount;
+    }
+    if (!match.bookHighLow) backfill.bookHighLow = bookHighLow;
 
-      await Match.findByIdAndUpdate(req.params.id, {
-        $set: {
-          finalBook,
-          totalSnapshotCount,
-        },
-      });
+    if (Object.keys(backfill).length > 0) {
+      await Match.findByIdAndUpdate(matchId, { $set: backfill });
     }
 
     res.json({ ...match, snapshots, totalSnapshotCount, finalBook, rollingBook5m, bookHighLow });

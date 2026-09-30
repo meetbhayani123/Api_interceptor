@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import { Match } from '../models/Match.js';
 import { OddsSnapshot } from '../models/OddsSnapshot.js';
 import { OddsService } from './OddsService.js';
-import { addBookResults, calculateMatchBook, calculateSnapshotBook, calculateMatchBookInTimeRange, calculateMatchBookHighLow } from './BookService.js';
+import { addBookResults, calculateMatchBook, calculateSnapshotBook, calculateMatchBookInTimeRange, calculateMatchBookHighLow, advanceBookHighLow } from './BookService.js';
 import { getIO } from '../socket/index.js';
 import { config } from '../config/env.js';
 
@@ -36,7 +36,7 @@ async function executePoll(matchId: string): Promise<void> {
 
   try {
     const match = await Match.findById(matchId)
-      .select({ marketId: 1, finalBook: 1, totalSnapshotCount: 1 })
+      .select({ marketId: 1, finalBook: 1, bookHighLow: 1, totalSnapshotCount: 1 })
       .lean();
 
     if (!match?.marketId) return;
@@ -72,17 +72,22 @@ async function executePoll(matchId: string): Promise<void> {
       ? addBookResults(match.finalBook, calculateSnapshotBook(snapshot))
       : await calculateMatchBook(matchId);
 
-    await Match.findByIdAndUpdate(matchId, {
-      $set: {
-        finalBook,
-        totalSnapshotCount: snapshot.sequenceId,
-      },
-    });
+    // Extend the cached peak/trough from the new cumulative book. O(1) — only
+    // matches with no cached value (imported before this was stored) pay for a
+    // one-time history scan, after which this stays constant-time.
+    const previousHighLow = match.bookHighLow ?? (await calculateMatchBookHighLow(matchId));
+    const bookHighLow = advanceBookHighLow(previousHighLow, finalBook);
 
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-    const [rollingBook5m, bookHighLow] = await Promise.all([
+    const [rollingBook5m] = await Promise.all([
       calculateMatchBookInTimeRange(matchId, fiveMinutesAgo),
-      calculateMatchBookHighLow(matchId),
+      Match.findByIdAndUpdate(matchId, {
+        $set: {
+          finalBook,
+          bookHighLow,
+          totalSnapshotCount: snapshot.sequenceId,
+        },
+      }),
     ]);
 
     getIO().to(matchId).emit('odds_update', {
