@@ -4,6 +4,7 @@ import { OddsSnapshot } from '../models/OddsSnapshot.js';
 import { OddsService } from '../services/OddsService.js';
 import { calculateMatchBook, calculateMatchBookInTimeRange, calculateMatchBookHighLow } from '../services/BookService.js';
 import { isPolling } from '../services/PollingService.js';
+import { scheduleMatchById } from '../services/MatchScheduler.js';
 import { config } from '../config/env.js';
 
 const SNAPSHOT_WINDOW_SIZE = 30;
@@ -57,6 +58,9 @@ export async function importMatches(req: Request, res: Response) {
           { new: true, upsert: true }
         );
 
+        // Open the polling window now if startTime is already within the lead time.
+        void scheduleMatchById(match._id.toString());
+
         imported.push(match);
       } catch (err: any) {
         errors.push({ id: eventId, message: err.message || 'Failed to import' });
@@ -109,6 +113,9 @@ export async function importMatchDetails(req: Request, res: Response) {
       { new: true, upsert: true }
     );
 
+    // Open the polling window now if startTime is already within the lead time.
+    void scheduleMatchById(match._id.toString());
+
     res.json({
       message: 'Match saved successfully',
       match,
@@ -154,6 +161,7 @@ export async function getMatch(req: Request, res: Response) {
         teamA: 1,
         teamB: 1,
         startTime: 1,
+        pollingStartedAt: 1,
         status: 1,
         finalBook: 1,
         totalSnapshotCount: 1,

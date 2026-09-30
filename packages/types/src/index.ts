@@ -36,6 +36,7 @@ export interface IMatch {
   teamA?: string;
   teamB?: string;
   startTime: Date;
+  pollingStartedAt?: Date;
   status: MatchStatus;
   oddsHistory: IOddsEntry[];
   finalBook?: IBookResult;

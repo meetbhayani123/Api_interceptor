@@ -106,7 +106,7 @@ async function executePoll(matchId: string): Promise<void> {
 export async function startPolling(matchId: string): Promise<boolean> {
   if (activePolls.has(matchId)) return false; // Already active
 
-  await Match.findByIdAndUpdate(matchId, { status: 'running' });
+  await Match.findByIdAndUpdate(matchId, { status: 'running', pollingStartedAt: new Date() });
 
   // Immediate first poll
   await executePoll(matchId);

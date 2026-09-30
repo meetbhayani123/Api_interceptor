@@ -21,6 +21,8 @@ const MatchSchema = new Schema<IMatchDocument>({
   teamA: { type: String, required: false },
   teamB: { type: String, required: false },
   startTime: { type: Date, required: true },
+  // When polling actually began (set PRE_START_LEAD_MS before startTime by MatchScheduler).
+  pollingStartedAt: { type: Date, required: false },
   status: {
     type: String,
     enum: ['upcoming', 'running', 'completed'],
