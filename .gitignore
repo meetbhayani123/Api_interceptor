@@ -5,6 +5,12 @@ node_modules/
 dist/
 .next/
 .turbo/
+*.tsbuildinfo
+
+# This is a pnpm workspace (see packageManager in package.json).
+# A second lockfile from a different package manager only causes drift.
+package-lock.json
+yarn.lock
 
 # Environment files — NEVER commit these
 .env
