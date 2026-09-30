@@ -5,18 +5,26 @@ import { api } from '@/lib/api';
 import { getSocket } from '@/lib/socket';
 import { ImportPanel } from '@/components/dashboard/ImportPanel';
 import { MatchCard } from '@/components/dashboard/MatchCard';
+import { MatchCardSkeleton } from '@/components/dashboard/MatchCardSkeleton';
 import { DeleteModal } from '@/components/modals/DeleteModal';
 
 export default function DashboardPage() {
   const [matches, setMatches] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
 
   const fetchMatches = useCallback(async () => {
     try {
+      setError(null);
       const data = await api.getMatches();
       setMatches(data);
-    } catch (err) {
-      console.error('Failed to fetch matches:', err);
+    } catch (err: any) {
+      // Surface this — a silent console.error leaves an empty dashboard that
+      // looks identical to "you have no matches".
+      setError(err?.message || 'Could not reach the server.');
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -30,12 +38,12 @@ export default function DashboardPage() {
     if (!matchIdsStr) return;
     const socket = getSocket();
     const ids = matchIdsStr.split(',');
-    
+
     ids.forEach(id => socket.emit('join_match', id));
 
     const handleOddsUpdate = (data: any) => {
-      setMatches((prev) => 
-        prev.map((m) => 
+      setMatches((prev) =>
+        prev.map((m) =>
           m._id === data.matchId ? { ...m, finalBook: data.finalBook, totalSnapshotCount: data.totalSnapshotCount } : m
         )
       );
@@ -50,47 +58,68 @@ export default function DashboardPage() {
   }, [matchIdsStr]);
 
   const handleTogglePolling = async (matchId: string, currentPollingStatus: boolean) => {
+    const next = !currentPollingStatus;
+    setMatches(prev => prev.map(m => m._id === matchId ? { ...m, isPolling: next } : m));
+
     try {
-      if (currentPollingStatus) {
-        setMatches(prev => prev.map(m => m._id === matchId ? { ...m, isPolling: false } : m));
-        await api.stopPolling(matchId);
-      } else {
-        setMatches(prev => prev.map(m => m._id === matchId ? { ...m, isPolling: true } : m));
-        await api.startPolling(matchId);
-      }
-    } catch (err) {
-      console.error('Failed to toggle polling:', err);
+      await (next ? api.startPolling(matchId) : api.stopPolling(matchId));
+    } catch (err: any) {
+      setError(err?.message || `Could not ${next ? 'start' : 'stop'} polling.`);
       fetchMatches();
     }
   };
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 z-10 relative overflow-x-hidden w-full">
-      <div className="max-w-4xl mx-auto flex flex-col gap-6 items-center w-full">
+    <div className="px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8 z-10 relative w-full">
+      <div className="max-w-4xl mx-auto flex flex-col gap-4 sm:gap-6 w-full">
 
         {/* Import Panel */}
-        <div className="w-full">
-          <ImportPanel onImportSuccess={fetchMatches} />
-        </div>
+        <ImportPanel onImportSuccess={fetchMatches} />
 
         {/* Matches List */}
-        <div className="w-full bg-slate-800/40 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-xl flex flex-col overflow-hidden max-h-[80vh]">
-          <div className="p-4 border-b border-slate-700/50 bg-slate-800/60 flex justify-between items-center">
-            <h2 className="text-lg font-bold flex items-center gap-2">
-              <svg className="w-5 h-5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <section className="w-full bg-slate-800/40 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-xl flex flex-col overflow-hidden">
+          <div className="p-4 border-b border-slate-700/50 bg-slate-800/60 flex justify-between items-center gap-3">
+            <h2 className="text-base sm:text-lg font-bold flex items-center gap-2 min-w-0">
+              <svg className="w-5 h-5 text-cyan-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
               </svg>
-              Recent Matches
+              <span className="truncate">Recent Matches</span>
             </h2>
-            <span className="px-3 py-1 bg-slate-700/50 rounded-full text-xs font-medium text-slate-300">
-              {matches.length} total
+            <span className="px-3 py-1 bg-slate-700/50 rounded-full text-xs font-medium text-slate-300 shrink-0 tabular-nums">
+              {loading ? 'Loading…' : `${matches.length} total`}
             </span>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
-            {matches.length === 0 ? (
-              <div className="flex flex-col items-center justify-center text-slate-500 gap-3 py-10">
-                <svg className="w-10 h-10 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          {/* On phones the list flows with the page; only on larger screens does
+              it become its own scroll region, so there is no nested scrolling. */}
+          <div className="flex-1 sm:overflow-y-auto sm:max-h-[65vh] p-3 sm:p-4 space-y-2 custom-scrollbar">
+            {error && (
+              <div
+                role="alert"
+                className="mb-3 p-3 rounded-xl bg-rose-900/20 border border-rose-500/30 text-rose-200 text-sm flex items-start gap-2"
+              >
+                <svg className="w-5 h-5 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="flex-1 min-w-0">{error}</span>
+                <button
+                  onClick={fetchMatches}
+                  className="shrink-0 px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 text-xs font-semibold focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:outline-none"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
+
+            {loading ? (
+              <div className="grid gap-2">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <MatchCardSkeleton key={i} />
+                ))}
+              </div>
+            ) : matches.length === 0 && !error ? (
+              <div className="flex flex-col items-center justify-center text-slate-500 gap-3 py-10 px-4 text-center">
+                <svg className="w-10 h-10 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                 </svg>
                 <p className="text-sm">No matches yet. Import events to get started.</p>
@@ -108,7 +137,7 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
-        </div>
+        </section>
       </div>
 
       {/* Delete Modal */}

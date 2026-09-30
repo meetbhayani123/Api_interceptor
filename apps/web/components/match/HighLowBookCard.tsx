@@ -1,4 +1,5 @@
 import { formatCurrency } from '@/lib/format';
+import { LiveNumber } from '@/components/ui/LiveNumber';
 
 interface BookHighLow {
   teamA_high: number;
@@ -24,17 +25,17 @@ export function HighLowBookCard({ bookHighLow, currentBook, teamA, teamB }: High
   const teamBName = teamB || 'Team B';
 
   return (
-    <div className="bg-slate-800/40 backdrop-blur-xl border border-amber-500/30 rounded-2xl p-6 md:p-8 mb-8 shadow-[0_0_30px_rgba(245,158,11,0.1)] relative overflow-hidden group">
+    <div className="bg-slate-800/40 backdrop-blur-xl border border-amber-500/30 rounded-2xl p-4 sm:p-6 md:p-8 mb-6 sm:mb-8 shadow-[0_0_30px_rgba(245,158,11,0.1)] relative overflow-hidden group">
       <div className="absolute inset-0 bg-gradient-to-r from-amber-500/5 to-orange-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
-      <h2 className="text-xl font-bold flex items-center gap-3 border-b border-slate-700/50 pb-4 mb-6 relative z-10">
-        <svg className="w-6 h-6 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <h2 className="text-base sm:text-xl font-bold flex items-center gap-2 sm:gap-3 border-b border-slate-700/50 pb-3 sm:pb-4 mb-4 sm:mb-6 relative z-10">
+        <svg className="w-5 h-5 sm:w-6 sm:h-6 text-amber-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
         </svg>
         Book High &amp; Low (All-Time)
       </h2>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-6 relative z-10">
         {/* Team A */}
         <TeamHighLowPanel
           teamName={teamAName}
@@ -71,11 +72,11 @@ function TeamHighLowPanel({
   const pct = range > 0 ? ((current - low) / range) * 100 : 50;
 
   return (
-    <div className="bg-slate-900/60 border border-slate-700/50 rounded-xl p-5">
+    <div className="bg-slate-900/60 border border-slate-700/50 rounded-xl p-4 sm:p-5 min-w-0">
       {/* Team name */}
-      <div className="text-sm font-bold text-slate-300 mb-4 flex items-center gap-2">
-        <span className="w-2 h-2 rounded-full bg-amber-400" />
-        {teamName}
+      <div className="text-sm font-bold text-slate-300 mb-4 flex items-center gap-2 min-w-0">
+        <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
+        <span className="truncate">{teamName}</span>
       </div>
 
       {/* High */}
@@ -84,15 +85,17 @@ function TeamHighLowPanel({
           <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 10l7-7m0 0l7 7m-7-7v18" />
           </svg>
-          <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider">All-Time High</span>
+          <span className="text-[11px] sm:text-xs text-slate-500 font-semibold uppercase tracking-wider">All-Time High</span>
         </div>
-        <span className={`text-xl font-black ${
-          high >= 0
-            ? 'text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]'
-            : 'text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.3)]'
-        }`}>
-          {formatCurrency(high)}
-        </span>
+        <LiveNumber
+          value={high}
+          format={formatCurrency}
+          className={`text-lg sm:text-xl font-black shrink-0 ${
+            high >= 0
+              ? 'text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]'
+              : 'text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.3)]'
+          }`}
+        />
       </div>
 
       {/* Low */}
@@ -101,15 +104,17 @@ function TeamHighLowPanel({
           <svg className="w-4 h-4 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
           </svg>
-          <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider">All-Time Low</span>
+          <span className="text-[11px] sm:text-xs text-slate-500 font-semibold uppercase tracking-wider">All-Time Low</span>
         </div>
-        <span className={`text-xl font-black ${
-          low >= 0
-            ? 'text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]'
-            : 'text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.3)]'
-        }`}>
-          {formatCurrency(low)}
-        </span>
+        <LiveNumber
+          value={low}
+          format={formatCurrency}
+          className={`text-lg sm:text-xl font-black shrink-0 ${
+            low >= 0
+              ? 'text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]'
+              : 'text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.3)]'
+          }`}
+        />
       </div>
 
       {/* Visual gauge bar */}
@@ -121,25 +126,21 @@ function TeamHighLowPanel({
           />
         </div>
         <div className="flex justify-between mt-1">
-          <span className="text-[10px] text-rose-400/60 font-mono">Low</span>
-          <span className="text-[10px] text-emerald-400/60 font-mono">High</span>
+          <span className="text-[11px] text-rose-400/60 font-mono">Low</span>
+          <span className="text-[11px] text-emerald-400/60 font-mono">High</span>
         </div>
       </div>
 
       {/* Current */}
       <div className="flex items-center justify-between pt-3 border-t border-slate-700/30">
-        <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Current</span>
-        <span className={`text-lg font-bold ${
-          current >= 0 ? 'text-emerald-400' : 'text-rose-400'
-        }`}>
-          {formatCurrency(current)}
-        </span>
-      </div>
-
-      {/* Raw values */}
-      <div className="mt-2 text-[10px] text-slate-600 font-mono space-y-0.5">
-        <div>High raw: {high?.toFixed(4)} &nbsp;|&nbsp; Low raw: {low?.toFixed(4)}</div>
-        <div>Current raw: {current?.toFixed(4)}</div>
+        <span className="text-[11px] sm:text-xs text-slate-500 font-semibold uppercase tracking-wider">Current</span>
+        <LiveNumber
+          value={current}
+          format={formatCurrency}
+          className={`text-base sm:text-lg font-bold shrink-0 ${
+            current >= 0 ? 'text-emerald-400' : 'text-rose-400'
+          }`}
+        />
       </div>
     </div>
   );

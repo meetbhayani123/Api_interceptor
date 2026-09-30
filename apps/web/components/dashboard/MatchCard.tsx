@@ -1,4 +1,10 @@
+'use client';
+
 import Link from 'next/link';
+import { LiveNumber } from '@/components/ui/LiveNumber';
+import { StatusBadge } from '@/components/ui/StatusBadge';
+import { getDisplayStatus, getCountdown } from '@/lib/format';
+import { useNow } from '@/lib/useNow';
 
 interface MatchCardProps {
   match: any;
@@ -6,32 +12,24 @@ interface MatchCardProps {
   onTogglePolling?: (matchId: string, currentStatus: boolean) => void;
 }
 
+const signed = (v: number) => `${v > 0 ? '+' : ''}${v.toFixed(2)}`;
+
 export function MatchCard({ match, onDelete, onTogglePolling }: MatchCardProps) {
   const teamA_PL = match.finalBook?.teamA_PL;
   const teamB_PL = match.finalBook?.teamB_PL;
   const hasBook = typeof teamA_PL === 'number' && typeof teamB_PL === 'number';
 
-  const isRunning = match.status === 'running' || match.isPolling;
-
-  // Countdown helper
-  const countdown = (() => {
-    if (!match.startTime) return null;
-    const diff = new Date(match.startTime).getTime() - Date.now();
-    if (isRunning) return { label: 'LIVE', type: 'live' as const };
-    if (diff > 0) {
-      const hrs = Math.floor(diff / 3600000);
-      const mins = Math.floor((diff % 3600000) / 60000);
-      return { label: `in ${hrs > 0 ? `${hrs}h ` : ''}${mins}m`, type: 'upcoming' as const };
-    }
-    return null;
-  })();
+  const now = useNow();
+  const displayStatus = getDisplayStatus(match, now);
+  const countdown = getCountdown(match.startTime, now);
+  const isRunning = displayStatus === 'live' || displayStatus === 'capturing';
 
   return (
     <div className="relative group/card">
       {/* Delete button */}
       <button
         onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(match); }}
-        className="absolute top-1.5 right-1.5 z-20 p-1 rounded-full bg-slate-800/90 text-slate-500 hover:bg-rose-500 hover:text-white border border-slate-700/50 hover:border-transparent opacity-70 sm:opacity-0 group-hover/card:opacity-100 transition-all duration-200"
+        className="absolute top-1.5 right-1.5 z-20 p-1.5 rounded-full bg-slate-800/90 text-slate-500 hover:bg-rose-500 hover:text-white border border-slate-700/50 hover:border-transparent opacity-70 sm:opacity-0 group-hover/card:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:outline-none transition-all duration-200 after:absolute after:-inset-2.5 after:content-['']"
         title="Delete Match"
         aria-label={`Delete ${match.name}`}
       >
@@ -47,32 +45,23 @@ export function MatchCard({ match, onDelete, onTogglePolling }: MatchCardProps) 
 
           {/* ── Top: Match Name ── */}
           <div className="px-3 pt-2.5 pb-1.5 pr-7">
-            <h3 className="font-bold text-[13px] text-slate-100 uppercase leading-tight">
+            <h3 className="font-semibold text-sm text-slate-200 leading-tight">
               {match.name}
             </h3>
           </div>
 
           {/* ── Row 2: Status + Start At + Countdown — all in one line ── */}
-          <div className="px-3 pb-1.5 flex items-center gap-1.5 flex-wrap">
+          <div className="px-3 pb-2 flex items-center gap-1.5 flex-wrap">
             {/* Status badge */}
-            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide ${
-              isRunning
-                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                : match.status === 'completed'
-                  ? 'bg-slate-500/20 text-slate-400 border border-slate-500/30'
-                  : 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30'
-            }`}>
-              {isRunning && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />}
-              {isRunning ? 'live' : match.status}
-            </span>
+            <StatusBadge status={displayStatus} size="sm" />
 
             {/* Start At */}
             {match.startTime && (
-              <span className="flex items-center gap-1 text-[9px] text-slate-500">
-                <svg className="w-2.5 h-2.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <span className="flex items-center gap-1 text-[11px] text-slate-500">
+                <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span className="text-slate-400">
+                <span className="text-slate-400 tabular-nums">
                   {new Date(match.startTime).toLocaleString('en-IN', {
                     day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true,
                   })}
@@ -80,58 +69,56 @@ export function MatchCard({ match, onDelete, onTogglePolling }: MatchCardProps) 
               </span>
             )}
 
-            {/* Countdown badge */}
+            {/* Countdown badge — only while the match is still pending */}
             {countdown && (
-              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
-                countdown.type === 'live'
-                  ? 'bg-emerald-500/20 text-emerald-400'
-                  : 'bg-amber-500/15 text-amber-400'
-              }`}>
-                {countdown.label}
+              <span className="px-1.5 py-0.5 rounded text-[11px] font-semibold tabular-nums bg-amber-500/15 text-amber-400">
+                in {countdown}
               </span>
             )}
           </div>
 
-          {/* ── Book Data (only when available) ── */}
+          {/* ── Book Data — the primary number on this card ── */}
           {hasBook && (
-            <div className="px-3 pb-1.5">
+            <div className="px-3 pb-2">
               <div className="flex gap-1.5">
                 {/* Team A PL */}
-                <div className={`flex-1 flex items-center justify-between px-2 py-1 rounded ${
+                <div className={`flex-1 min-w-0 flex flex-col xs:flex-row xs:items-center xs:justify-between gap-0.5 xs:gap-2 px-2 py-1.5 rounded ${
                   teamA_PL >= 0 ? 'bg-emerald-500/10' : 'bg-rose-500/10'
                 }`}>
-                  <span className="text-[9px] text-slate-400 font-medium truncate mr-1">{match.teamA}</span>
-                  <span className={`text-[11px] font-bold shrink-0 ${
-                    teamA_PL >= 0 ? 'text-emerald-400' : 'text-rose-400'
-                  }`}>
-                    {teamA_PL > 0 ? '+' : ''}{teamA_PL.toFixed(2)}
-                  </span>
+                  <span className="text-[11px] text-slate-400 truncate">{match.teamA}</span>
+                  <LiveNumber
+                    value={teamA_PL}
+                    format={signed}
+                    className={`text-base font-bold shrink-0 ${teamA_PL >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}
+                  />
                 </div>
                 {/* Team B PL */}
-                <div className={`flex-1 flex items-center justify-between px-2 py-1 rounded ${
+                <div className={`flex-1 min-w-0 flex flex-col xs:flex-row xs:items-center xs:justify-between gap-0.5 xs:gap-2 px-2 py-1.5 rounded ${
                   teamB_PL >= 0 ? 'bg-emerald-500/10' : 'bg-rose-500/10'
                 }`}>
-                  <span className="text-[9px] text-slate-400 font-medium truncate mr-1">{match.teamB}</span>
-                  <span className={`text-[11px] font-bold shrink-0 ${
-                    teamB_PL >= 0 ? 'text-emerald-400' : 'text-rose-400'
-                  }`}>
-                    {teamB_PL > 0 ? '+' : ''}{teamB_PL.toFixed(2)}
-                  </span>
+                  <span className="text-[11px] text-slate-400 truncate">{match.teamB}</span>
+                  <LiveNumber
+                    value={teamB_PL}
+                    format={signed}
+                    className={`text-base font-bold shrink-0 ${teamB_PL >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}
+                  />
                 </div>
               </div>
               {(match.totalSnapshotCount > 0) && (
-                <div className="text-right text-[8px] text-slate-600 mt-0.5">{match.totalSnapshotCount} snaps</div>
+                <div className="text-right text-[11px] text-slate-500 mt-1 tabular-nums">
+                  {match.totalSnapshotCount} snaps
+                </div>
               )}
             </div>
           )}
 
           {/* ── Bottom: Start/Stop + IDs ── */}
-          <div className="px-3 pb-2 flex items-center justify-between gap-2">
+          <div className="px-3 pb-2.5 flex items-center justify-between gap-2">
             {/* Start/Stop */}
             {onTogglePolling && (
               <button
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); onTogglePolling(match._id, match.isPolling); }}
-                className={`shrink-0 px-2 py-0.5 rounded border text-[9px] font-bold flex items-center gap-1 transition-colors ${
+                className={`relative shrink-0 px-3 py-1.5 sm:px-2.5 rounded border text-[11px] font-semibold flex items-center gap-1 transition-colors focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none after:absolute after:-inset-1.5 after:content-[''] ${
                   match.isPolling
                     ? 'bg-rose-500/15 text-rose-400 border-rose-500/30 hover:bg-rose-500/25'
                     : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/25'
@@ -144,7 +131,7 @@ export function MatchCard({ match, onDelete, onTogglePolling }: MatchCardProps) 
                   </>
                 ) : (
                   <>
-                    <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
                     </svg>
                     Start
@@ -153,12 +140,12 @@ export function MatchCard({ match, onDelete, onTogglePolling }: MatchCardProps) 
               </button>
             )}
 
-            {/* EV + MKT — compact */}
-            <div className="flex items-center gap-1 font-mono text-[8px] text-slate-600 min-w-0 overflow-hidden">
+            {/* EV + MKT — secondary, but still legible */}
+            <div className="hidden xs:flex items-center gap-1 font-mono text-[11px] text-slate-600 min-w-0 overflow-hidden tabular-nums">
               <span className="shrink-0">EV:</span>
-              <span className="truncate max-w-[50px]">{match.eventId || '---'}</span>
+              <span className="truncate max-w-[64px]">{match.eventId || '---'}</span>
               <span className="shrink-0">MKT:</span>
-              <span className="truncate max-w-[60px]">{match.marketId || '---'}</span>
+              <span className="truncate max-w-[72px]">{match.marketId || '---'}</span>
             </div>
           </div>
 

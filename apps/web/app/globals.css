@@ -13,7 +13,7 @@
 body {
   background-color: var(--color-bg);
   color: #e2e8f0;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -42,4 +42,33 @@ body {
 ::selection {
   background-color: rgba(6, 182, 212, 0.3);
   color: #fff;
+}
+
+/* ─── Live Value Flash ─── */
+/* Played when a streamed number changes, so movement is visible at a glance. */
+@keyframes flash-up {
+  from { background-color: rgba(16, 185, 129, 0.28); }
+  to   { background-color: transparent; }
+}
+@keyframes flash-down {
+  from { background-color: rgba(244, 63, 94, 0.28); }
+  to   { background-color: transparent; }
+}
+.flash-up   { animation: flash-up 0.7s ease-out; }
+.flash-down { animation: flash-down 0.7s ease-out; }
+
+/* ─── Reduced Motion ─── */
+@media (prefers-reduced-motion: reduce) {
+  .flash-up,
+  .flash-down {
+    animation: none;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

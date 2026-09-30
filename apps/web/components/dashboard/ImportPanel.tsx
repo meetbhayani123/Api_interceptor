@@ -33,8 +33,8 @@ export function ImportPanel({ onImportSuccess }: ImportPanelProps) {
   };
 
   return (
-    <div className="bg-slate-800/40 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl p-6 transition-all duration-500 hover:shadow-cyan-500/10 hover:border-cyan-500/30 group">
-      <div className="text-center mb-6">
+    <div className="bg-slate-800/40 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl p-4 sm:p-6 transition-all duration-500 hover:shadow-cyan-500/10 hover:border-cyan-500/30 group">
+      <div className="text-center mb-4 sm:mb-6">
         <div className="inline-flex items-center justify-center p-3 bg-cyan-500/10 rounded-xl mb-3 group-hover:scale-110 transition-transform duration-300">
           <svg className="w-7 h-7 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
