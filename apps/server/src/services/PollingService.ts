@@ -7,7 +7,10 @@ import { getIO } from '../socket/index.js';
 import { config } from '../config/env.js';
 
 const oddsService = new OddsService();
-const activePolls = new Map<string, NodeJS.Timeout>();
+// A null value means a start is in flight: the slot is reserved but the timer
+// does not exist yet. Reserving synchronously is what makes startPolling safe
+// against concurrent callers.
+const activePolls = new Map<string, NodeJS.Timeout | null>();
 const runningPolls = new Set<string>();
 
 /**
@@ -109,19 +112,36 @@ async function executePoll(matchId: string): Promise<void> {
  * Start continuous polling for a match.
  */
 export async function startPolling(matchId: string): Promise<boolean> {
-  if (activePolls.has(matchId)) return false; // Already active
+  if (activePolls.has(matchId)) return false; // Already active or starting
 
-  await Match.findByIdAndUpdate(matchId, { status: 'running', pollingStartedAt: new Date() });
+  // Claim the slot BEFORE awaiting anything. The scheduler sweep, the HTTP
+  // route and the post-import hook can all target the same match at once, and
+  // the first poll below may spend 10s+ retrying against the external API.
+  // Recording ourselves only after that left a window in which every caller
+  // passed the guard and created its own interval — and since the map holds
+  // just one, the rest polled forever and could never be cleared.
+  activePolls.set(matchId, null);
 
-  // Immediate first poll
-  await executePoll(matchId);
+  try {
+    // Immediate first poll
+    await executePoll(matchId);
 
-  const interval = setInterval(() => {
-    executePoll(matchId);
-  }, config.pollingIntervalMs);
+    // stopPolling may have run while that was in flight. A stop wins.
+    if (!activePolls.has(matchId)) return false;
 
-  activePolls.set(matchId, interval);
-  return true;
+    const interval = setInterval(() => {
+      executePoll(matchId);
+    }, config.pollingIntervalMs);
+
+    activePolls.set(matchId, interval);
+
+    await Match.findByIdAndUpdate(matchId, { status: 'running', pollingStartedAt: new Date() });
+    return true;
+  } catch (error) {
+    // Never strand the reservation, or the match can never be started again.
+    activePolls.delete(matchId);
+    throw error;
+  }
 }
 
 /**
@@ -129,10 +149,12 @@ export async function startPolling(matchId: string): Promise<boolean> {
  */
 export async function stopPolling(matchId: string): Promise<void> {
   const interval = activePolls.get(matchId);
-  if (interval) {
-    clearInterval(interval);
-    activePolls.delete(matchId);
-  }
+  if (interval) clearInterval(interval);
+
+  // Delete even when the value is null, so a start still in flight is
+  // cancelled rather than finishing and installing an interval behind us.
+  activePolls.delete(matchId);
+
   await Match.findByIdAndUpdate(matchId, { status: 'completed' });
 }
 
