@@ -14,6 +14,79 @@ const activePolls = new Map<string, NodeJS.Timeout | null>();
 const runningPolls = new Set<string>();
 
 /**
+ * Poll health, kept in memory so a successful-but-unchanged poll does not cost
+ * a database write every 3 seconds. Successes are flushed on a throttle;
+ * failures and recoveries are written immediately, because those are the
+ * transitions anyone looking at the UI actually needs to see.
+ */
+interface PollHealth {
+  lastSuccessAt: number;
+  lastPersistedSuccessAt: number;
+  consecutiveFailures: number;
+}
+
+const health = new Map<string, PollHealth>();
+const HEALTH_PERSIST_INTERVAL_MS = 15_000;
+
+function healthFor(matchId: string): PollHealth {
+  let entry = health.get(matchId);
+  if (!entry) {
+    entry = { lastSuccessAt: 0, lastPersistedSuccessAt: 0, consecutiveFailures: 0 };
+    health.set(matchId, entry);
+  }
+  return entry;
+}
+
+/**
+ * A poll that returned parseable odds — whether or not they had changed.
+ * Unchanged odds are a healthy feed, not a failure.
+ */
+async function recordPollSuccess(matchId: string): Promise<void> {
+  const entry = healthFor(matchId);
+  const now = Date.now();
+  const recovered = entry.consecutiveFailures > 0;
+
+  entry.lastSuccessAt = now;
+  entry.consecutiveFailures = 0;
+
+  // Always persist a recovery; otherwise only every HEALTH_PERSIST_INTERVAL_MS.
+  if (!recovered && now - entry.lastPersistedSuccessAt < HEALTH_PERSIST_INTERVAL_MS) return;
+
+  entry.lastPersistedSuccessAt = now;
+  await Match.findByIdAndUpdate(matchId, {
+    $set: { lastSuccessfulPollAt: new Date(now), consecutiveFailures: 0 },
+    $unset: { lastPollError: '' },
+  });
+}
+
+/**
+ * A poll that threw. Persisted immediately, and after enough consecutive
+ * failures the match is stopped rather than left retrying forever against a
+ * feed that is not coming back.
+ */
+async function recordPollFailure(matchId: string, error: unknown): Promise<void> {
+  const entry = healthFor(matchId);
+  entry.consecutiveFailures += 1;
+
+  const message = error instanceof Error ? error.message : String(error);
+
+  await Match.findByIdAndUpdate(matchId, {
+    $set: {
+      consecutiveFailures: entry.consecutiveFailures,
+      lastPollError: message.slice(0, 500),
+    },
+  });
+
+  if (entry.consecutiveFailures < config.maxConsecutiveFailures) return;
+
+  console.error(
+    `[PollingService] ✖ Stopping match ${matchId} after ${entry.consecutiveFailures} ` +
+    `consecutive failures. Last error: ${message}`
+  );
+  await stopPolling(matchId);
+}
+
+/**
  * Compares two team odds snapshots for equality.
  */
 function isSnapshotIdentical(
@@ -45,6 +118,11 @@ async function executePoll(matchId: string): Promise<void> {
     if (!match?.marketId) return;
 
     const { teamA, teamB } = await oddsService.getSnapshotData(match.marketId);
+
+    // The feed answered. Record that before the dedup check below, or a market
+    // whose odds simply are not moving would look like a broken feed.
+    await recordPollSuccess(matchId);
+
     const latestSnapshot = await OddsSnapshot.findOne({ matchId })
       .sort({ capturedAt: -1 })
       .select({ teamA: 1, teamB: 1, sequenceId: 1, capturedAt: 1 })
@@ -100,9 +178,16 @@ async function executePoll(matchId: string): Promise<void> {
       rollingBook5m,
       bookHighLow,
       totalSnapshotCount: snapshot.sequenceId,
+      lastSuccessfulPollAt: new Date(),
+      consecutiveFailures: 0,
     });
   } catch (error) {
     console.error(`[PollingService] Error for match ${matchId}:`, error);
+    try {
+      await recordPollFailure(matchId, error);
+    } catch (healthError) {
+      console.error(`[PollingService] Could not record failure for ${matchId}:`, healthError);
+    }
   } finally {
     runningPolls.delete(matchId);
   }
@@ -154,6 +239,7 @@ export async function stopPolling(matchId: string): Promise<void> {
   // Delete even when the value is null, so a start still in flight is
   // cancelled rather than finishing and installing an interval behind us.
   activePolls.delete(matchId);
+  health.delete(matchId);
 
   await Match.findByIdAndUpdate(matchId, { status: 'completed' });
 }

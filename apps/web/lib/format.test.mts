@@ -1,7 +1,7 @@
 // .mts because apps/web is CommonJS; this forces ESM for the test runner.
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { getDisplayStatus, getCountdown, formatCurrency } from './format.ts';
+import { getDisplayStatus, getCountdown, formatCurrency, getFeedHealth, formatAgo } from './format.ts';
 
 const MIN = 60_000;
 const NOW = Date.parse('2026-09-30T12:00:00Z');
@@ -80,5 +80,63 @@ describe('formatCurrency', () => {
   it('survives a missing or unparseable value', () => {
     assert.equal(formatCurrency(NaN), '₹0.00');
     assert.equal(formatCurrency(undefined as unknown as number), '₹0.00');
+  });
+});
+
+describe('getFeedHealth', () => {
+  const capturing = { status: 'running', isPolling: true };
+
+  it('reports nothing for a match that is not capturing', () => {
+    assert.equal(getFeedHealth({ status: 'upcoming', isPolling: false }, NOW), null);
+  });
+
+  it('is ok right after polling starts, before any report', () => {
+    assert.equal(getFeedHealth({ ...capturing, lastSuccessfulPollAt: null }, NOW), 'ok');
+  });
+
+  it('is ok while captures keep landing', () => {
+    const recent = new Date(NOW - 5_000);
+    assert.equal(getFeedHealth({ ...capturing, lastSuccessfulPollAt: recent }, NOW), 'ok');
+  });
+
+  it('tolerates the persist throttle without crying wolf', () => {
+    // Successes are only written every 15s, and a failing poll retries
+    // internally for several seconds, so ~20s of silence is still healthy.
+    const throttled = new Date(NOW - 20_000);
+    assert.equal(getFeedHealth({ ...capturing, lastSuccessfulPollAt: throttled }, NOW), 'ok');
+  });
+
+  it('goes stale when nothing has landed for a long time', () => {
+    const old = new Date(NOW - 120_000);
+    assert.equal(getFeedHealth({ ...capturing, lastSuccessfulPollAt: old }, NOW), 'stale');
+  });
+
+  it('reports failing when the server recorded an error', () => {
+    assert.equal(
+      getFeedHealth(
+        { ...capturing, lastSuccessfulPollAt: new Date(NOW - 1000), consecutiveFailures: 3, lastPollError: 'boom' },
+        NOW
+      ),
+      'failing'
+    );
+  });
+
+  it('reports nothing before hydration', () => {
+    assert.equal(getFeedHealth({ ...capturing, lastSuccessfulPollAt: new Date(NOW) }, null), null);
+  });
+});
+
+describe('formatAgo', () => {
+  it('counts seconds, minutes, hours and days', () => {
+    assert.equal(formatAgo(new Date(NOW - 12_000), NOW), '12s ago');
+    assert.equal(formatAgo(new Date(NOW - 3 * 60_000), NOW), '3m ago');
+    assert.equal(formatAgo(new Date(NOW - 5 * 3_600_000), NOW), '5h ago');
+    assert.equal(formatAgo(new Date(NOW - 50 * 3_600_000), NOW), '2d ago');
+  });
+
+  it('handles clock skew and the pre-hydration case', () => {
+    assert.equal(formatAgo(new Date(NOW + 5_000), NOW), 'just now');
+    assert.equal(formatAgo(new Date(NOW), null), null);
+    assert.equal(formatAgo(null, NOW), null);
   });
 });

@@ -37,6 +37,12 @@ export interface IMatch {
   teamB?: string;
   startTime: Date;
   pollingStartedAt?: Date;
+  /** Last poll that actually returned parseable odds. */
+  lastSuccessfulPollAt?: Date;
+  /** Failed polls since the last success; reset to 0 on any success. */
+  consecutiveFailures?: number;
+  /** Why the most recent poll failed, surfaced so failures are not silent. */
+  lastPollError?: string;
   status: MatchStatus;
   oddsHistory: IOddsEntry[];
   finalBook?: IBookResult;

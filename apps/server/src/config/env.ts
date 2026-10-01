@@ -49,6 +49,13 @@ export const config = {
   // considers it over and stops. Also bounds how far back an imported match can
   // be and still auto-start. Raise it for formats that run longer than a day.
   maxPollHours: Number(process.env.MAX_POLL_HOURS || envFile.MAX_POLL_HOURS || 12),
+  // Consecutive failed polls before a match is stopped. Each failure already
+  // costs several seconds of internal retries, so 20 is roughly 2-3 minutes of
+  // sustained failure — long enough to ride out a blip, short enough that a
+  // broken feed does not hammer the upstream API for hours.
+  maxConsecutiveFailures: Number(
+    process.env.MAX_CONSECUTIVE_FAILURES || envFile.MAX_CONSECUTIVE_FAILURES || 20
+  ),
   cors: {
     origin: rawCorsOrigin,
     /**

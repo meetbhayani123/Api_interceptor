@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import { LiveNumber } from '@/components/ui/LiveNumber';
 import { StatusBadge } from '@/components/ui/StatusBadge';
-import { getDisplayStatus, getCountdown } from '@/lib/format';
+import { getDisplayStatus, getCountdown, getFeedHealth, formatAgo } from '@/lib/format';
+import { FeedHealthBadge } from '@/components/ui/FeedHealthBadge';
 import { useNow } from '@/lib/useNow';
 
 interface MatchCardProps {
@@ -22,6 +23,7 @@ export function MatchCard({ match, onDelete, onTogglePolling }: MatchCardProps) 
   const now = useNow();
   const displayStatus = getDisplayStatus(match, now);
   const countdown = getCountdown(match.startTime, now);
+  const feedHealth = getFeedHealth(match, now);
   const isRunning = displayStatus === 'live' || displayStatus === 'capturing';
 
   return (
@@ -54,6 +56,8 @@ export function MatchCard({ match, onDelete, onTogglePolling }: MatchCardProps) 
           <div className="px-3 pb-2 flex items-center gap-1.5 flex-wrap">
             {/* Status badge */}
             <StatusBadge status={displayStatus} size="sm" />
+
+            <FeedHealthBadge health={feedHealth} lastCapture={formatAgo(match.lastSuccessfulPollAt, now)} size="sm" />
 
             {/* Start At */}
             {match.startTime && (

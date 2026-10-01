@@ -11,7 +11,8 @@ import { HighLowBookCard } from '@/components/match/HighLowBookCard';
 import { SnapshotGrid } from '@/components/match/SnapshotGrid';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Card } from '@/components/ui/Card';
-import { getDisplayStatus, getCountdown } from '@/lib/format';
+import { getDisplayStatus, getCountdown, getFeedHealth, formatAgo } from '@/lib/format';
+import { FeedHealthBadge } from '@/components/ui/FeedHealthBadge';
 import { useNow } from '@/lib/useNow';
 
 const SNAPSHOT_WINDOW_SIZE = 30;
@@ -62,6 +63,9 @@ export default function MatchDetailPage() {
         if (existingIds.has(snapshotId)) {
           return {
             ...prev,
+            lastSuccessfulPollAt: data.lastSuccessfulPollAt ?? prev.lastSuccessfulPollAt,
+            consecutiveFailures: data.consecutiveFailures ?? prev.consecutiveFailures,
+            lastPollError: data.consecutiveFailures === 0 ? undefined : prev.lastPollError,
             finalBook: data.finalBook,
             rollingBook5m: data.rollingBook5m,
             bookHighLow: data.bookHighLow,
@@ -73,6 +77,9 @@ export default function MatchDetailPage() {
 
         return {
           ...prev,
+          lastSuccessfulPollAt: data.lastSuccessfulPollAt ?? prev.lastSuccessfulPollAt,
+          consecutiveFailures: data.consecutiveFailures ?? prev.consecutiveFailures,
+          lastPollError: data.consecutiveFailures === 0 ? undefined : prev.lastPollError,
           finalBook: data.finalBook,
           rollingBook5m: data.rollingBook5m,
           bookHighLow: data.bookHighLow,
@@ -124,6 +131,8 @@ export default function MatchDetailPage() {
 
   const displayStatus = getDisplayStatus(match, now);
   const countdown = getCountdown(match.startTime, now);
+  const feedHealth = getFeedHealth({ ...match, isPolling }, now);
+  const lastCapture = formatAgo(match.lastSuccessfulPollAt, now);
 
   return (
     <div className="px-4 py-4 sm:px-6 sm:py-6 md:p-8 z-10 relative">
@@ -144,6 +153,7 @@ export default function MatchDetailPage() {
           <div>
             <div className="flex items-center gap-3 mb-2 flex-wrap">
               <StatusBadge status={displayStatus} />
+              <FeedHealthBadge health={feedHealth} lastCapture={lastCapture} />
               <span className="text-slate-400 font-mono text-sm tabular-nums">Market: {match.marketId}</span>
               {match.startTime && (
                 <span className="flex items-center gap-1.5 text-xs text-slate-400">
@@ -168,6 +178,22 @@ export default function MatchDetailPage() {
             {displayStatus === 'capturing' && (
               <p className="mt-1.5 text-xs text-accent/80">
                 Capturing odds ahead of start — polling begins 30 minutes before the scheduled time.
+              </p>
+            )}
+            {isPolling && lastCapture && (
+              <p className="mt-1.5 text-xs text-slate-500 tabular-nums">
+                Last capture {lastCapture}
+              </p>
+            )}
+            {match.lastPollError && (match.consecutiveFailures ?? 0) > 0 && (
+              <p
+                role="alert"
+                className="mt-2 text-xs text-rose-200 bg-danger/10 border border-danger/30 rounded-lg px-3 py-2 break-words"
+              >
+                <span className="font-semibold">
+                  Feed error{(match.consecutiveFailures ?? 0) > 1 ? ` (${match.consecutiveFailures} in a row)` : ''}:
+                </span>{' '}
+                {match.lastPollError}
               </p>
             )}
           </div>

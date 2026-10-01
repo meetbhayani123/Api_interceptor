@@ -69,6 +69,67 @@ export function getCountdown(startTime: string | Date | undefined, now: number |
 }
 
 /**
+ * How healthy a match's odds feed looks.
+ *
+ * 'ok' is omitted deliberately — a working feed needs no badge. Only trouble
+ * is worth the user's attention.
+ */
+export type FeedHealth = 'ok' | 'stale' | 'failing';
+
+/**
+ * Captures land every few seconds, but a success is only written to the
+ * database on a throttle, and a failing poll retries internally for several
+ * seconds first. 45s is comfortably past both, so this does not cry wolf.
+ */
+const STALE_AFTER_MS = 45_000;
+
+/**
+ * Whether a match that should be capturing actually is.
+ *
+ * Returns null when the match is not capturing, so the caller shows nothing.
+ */
+export function getFeedHealth(
+  match: {
+    status?: string;
+    isPolling?: boolean;
+    lastSuccessfulPollAt?: string | Date | null;
+    consecutiveFailures?: number;
+    lastPollError?: string | null;
+  },
+  now: number | null
+): FeedHealth | null {
+  const isCapturing = match.status === 'running' || Boolean(match.isPolling);
+  if (!isCapturing || now === null) return null;
+
+  if ((match.consecutiveFailures ?? 0) > 0 && match.lastPollError) return 'failing';
+
+  // Polling just started and has not reported in yet — not yet a problem.
+  if (!match.lastSuccessfulPollAt) return 'ok';
+
+  const since = now - new Date(match.lastSuccessfulPollAt).getTime();
+  return since > STALE_AFTER_MS ? 'stale' : 'ok';
+}
+
+/**
+ * Compact relative time, e.g. "12s ago". Null before hydration.
+ */
+export function formatAgo(when: string | Date | null | undefined, now: number | null): string | null {
+  if (!when || now === null) return null;
+
+  const diff = now - new Date(when).getTime();
+  if (diff < 0) return 'just now';
+
+  const secs = Math.floor(diff / 1000);
+  if (secs < 60) return `${secs}s ago`;
+
+  const mins = Math.floor(secs / 60);
+  if (mins < 60) return `${mins}m ago`;
+
+  const hrs = Math.floor(mins / 60);
+  return hrs < 24 ? `${hrs}h ago` : `${Math.floor(hrs / 24)}d ago`;
+}
+
+/**
  * Status badge color classes.
  */
 export function getStatusStyles(status: DisplayStatus | string): string {

@@ -5,6 +5,7 @@ export interface IMatchDocument extends Omit<IMatch, '_id'>, Document {
   finalBook?: IBookResult;
   bookHighLow?: IBookHighLow;
   totalSnapshotCount?: number;
+  consecutiveFailures?: number;
 }
 
 const OddsEntrySchema = new Schema<IOddsEntry>({
@@ -24,6 +25,11 @@ const MatchSchema = new Schema<IMatchDocument>({
   startTime: { type: Date, required: true },
   // When polling actually began (set PRE_START_LEAD_MS before startTime by MatchScheduler).
   pollingStartedAt: { type: Date, required: false },
+  // Poll health. Without these a feed that breaks upstream fails silently:
+  // the error is logged and the UI keeps showing the last good numbers.
+  lastSuccessfulPollAt: { type: Date, required: false },
+  consecutiveFailures: { type: Number, min: 0, default: 0 },
+  lastPollError: { type: String, required: false },
   status: {
     type: String,
     enum: ['upcoming', 'running', 'completed'],

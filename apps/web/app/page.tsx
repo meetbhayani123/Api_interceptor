@@ -45,7 +45,18 @@ export default function DashboardPage() {
     const handleOddsUpdate = (data: any) => {
       setMatches((prev) =>
         prev.map((m) =>
-          m._id === data.matchId ? { ...m, finalBook: data.finalBook, totalSnapshotCount: data.totalSnapshotCount } : m
+          m._id === data.matchId
+            ? {
+                ...m,
+                finalBook: data.finalBook,
+                totalSnapshotCount: data.totalSnapshotCount,
+                // Keep feed health current, or a card would look stale while
+                // odds are visibly updating in front of the user.
+                lastSuccessfulPollAt: data.lastSuccessfulPollAt ?? m.lastSuccessfulPollAt,
+                consecutiveFailures: data.consecutiveFailures ?? m.consecutiveFailures,
+                lastPollError: data.consecutiveFailures === 0 ? undefined : m.lastPollError,
+              }
+            : m
         )
       );
     };
