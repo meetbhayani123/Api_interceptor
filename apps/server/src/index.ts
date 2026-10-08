@@ -7,6 +7,7 @@ import { initSocketServer } from './socket/index.js';
 import eventRoutes from './routes/event.routes.js';
 import matchRoutes from './routes/match.routes.js';
 import pollingRoutes from './routes/polling.routes.js';
+import savedBookRoutes from './routes/savedBook.routes.js';
 import { initMatchScheduler } from './services/MatchScheduler.js';
 
 // ─── Express App ───
@@ -43,6 +44,7 @@ app.get('/health', (_req, res) => {
 app.use('/api', eventRoutes);
 app.use('/api', matchRoutes);
 app.use('/api', pollingRoutes);
+app.use('/api', savedBookRoutes);
 
 // ─── HTTP + Socket.IO ───
 const httpServer = createServer(app);

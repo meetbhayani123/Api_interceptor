@@ -1,0 +1,163 @@
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
+import { api } from '@/lib/api';
+import { formatCurrency } from '@/lib/format';
+import { Card } from '@/components/ui/Card';
+import { Spinner } from '@/components/ui/Spinner';
+import { Pagination } from '@/components/ui/Pagination';
+import { LiveNumber } from '@/components/ui/LiveNumber';
+
+const PAGE_SIZE = 20;
+
+export default function SavedBooksPage() {
+  const [items, setItems] = useState<any[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState('');
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Debounce typing so each keystroke does not hit the server.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(searchInput.trim());
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  const fetchPage = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await api.getSavedBookMatches({ search, page, limit: PAGE_SIZE });
+      setItems(data.items ?? []);
+      setTotalPages(data.totalPages ?? 1);
+      setTotal(data.total ?? 0);
+    } catch (err: any) {
+      setError(err?.message || 'Could not load saved books.');
+    } finally {
+      setLoading(false);
+    }
+  }, [search, page]);
+
+  useEffect(() => {
+    fetchPage();
+  }, [fetchPage]);
+
+  return (
+    <div className="px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8 z-10 relative w-full">
+      <div className="max-w-4xl mx-auto flex flex-col gap-4 sm:gap-6 w-full">
+
+        <Card padding="sm">
+          <h1 className="text-lg sm:text-xl font-bold text-slate-100">Saved Books</h1>
+          <p className="text-sm text-slate-400 mt-1">
+            Every book you have recorded, newest first. Open a match to see its full history.
+          </p>
+
+          <label htmlFor="saved-search" className="sr-only">Search matches</label>
+          <div className="relative mt-4">
+            <svg
+              className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+              fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
+            </svg>
+            <input
+              id="saved-search"
+              type="search"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Search by match name…"
+              className="w-full min-h-[48px] pl-10 pr-4 py-3 bg-surface-raised/50 border border-subtle/80 rounded-xl text-white placeholder-slate-500 text-sm outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all"
+            />
+          </div>
+        </Card>
+
+        <Card padding="none" className="flex flex-col overflow-hidden">
+          <div className="p-3 sm:p-4 flex flex-col gap-3">
+            {error && (
+              <div role="alert" className="p-3 rounded-xl bg-danger/10 border border-danger/30 text-rose-200 text-sm flex items-start gap-2">
+                <span className="flex-1 min-w-0">{error}</span>
+                <button
+                  onClick={fetchPage}
+                  className="shrink-0 px-2.5 py-1 rounded-lg bg-danger/20 hover:bg-danger/30 text-rose-100 text-xs font-semibold focus-visible:ring-2 focus-visible:ring-danger focus-visible:outline-none"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
+
+            {loading ? (
+              <div className="flex justify-center py-12"><Spinner size="lg" /></div>
+            ) : items.length === 0 ? (
+              <div className="flex flex-col items-center justify-center text-slate-500 gap-3 py-12 px-4 text-center">
+                <svg className="w-10 h-10 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M5 8h14M5 12h14M5 16h14M4 4h16v16H4z" />
+                </svg>
+                <p className="text-sm">
+                  {search
+                    ? `No saved books match “${search}”.`
+                    : 'No books saved yet. Use “Save Book” on a match to record one.'}
+                </p>
+              </div>
+            ) : (
+              <ul className="grid gap-2">
+                {items.map((row) => (
+                  <li key={row.matchId}>
+                    <Link
+                      href={`/saved/${row.matchId}`}
+                      className="block rounded-lg bg-surface-raised/60 border border-subtle/50 border-l-2 border-l-accent/50 hover:border-accent/30 transition-colors focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none p-3"
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <h2 className="font-semibold text-sm text-slate-200 min-w-0 break-words">{row.matchName}</h2>
+                        <span className="shrink-0 px-1.5 py-0.5 rounded bg-slate-700/50 text-[11px] font-semibold text-slate-300 tabular-nums">
+                          {row.saveCount} saved
+                        </span>
+                      </div>
+
+                      <div className="flex gap-1.5 mb-2">
+                        <div className={`flex-1 min-w-0 flex flex-col xs:flex-row xs:items-center xs:justify-between gap-0.5 xs:gap-2 px-2 py-1.5 rounded ${row.lastTeamA_PL >= 0 ? 'bg-profit/10' : 'bg-loss/10'}`}>
+                          <span className="text-[11px] text-slate-400 truncate">{row.teamA}</span>
+                          <LiveNumber
+                            value={row.lastTeamA_PL}
+                            format={formatCurrency}
+                            showArrow={false}
+                            className={`text-sm font-bold shrink-0 ${row.lastTeamA_PL >= 0 ? 'text-profit' : 'text-loss'}`}
+                          />
+                        </div>
+                        <div className={`flex-1 min-w-0 flex flex-col xs:flex-row xs:items-center xs:justify-between gap-0.5 xs:gap-2 px-2 py-1.5 rounded ${row.lastTeamB_PL >= 0 ? 'bg-profit/10' : 'bg-loss/10'}`}>
+                          <span className="text-[11px] text-slate-400 truncate">{row.teamB}</span>
+                          <LiveNumber
+                            value={row.lastTeamB_PL}
+                            format={formatCurrency}
+                            showArrow={false}
+                            className={`text-sm font-bold shrink-0 ${row.lastTeamB_PL >= 0 ? 'text-profit' : 'text-loss'}`}
+                          />
+                        </div>
+                      </div>
+
+                      <p className="text-[11px] text-slate-500 tabular-nums">
+                        Last saved {new Date(row.lastSavedAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
+                      </p>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {!loading && items.length > 0 && (
+              <Pagination page={page} totalPages={totalPages} total={total} onPageChange={setPage} noun="match" nounPlural="matches" />
+            )}
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}

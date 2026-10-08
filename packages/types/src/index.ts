@@ -71,3 +71,37 @@ export interface IMatchDetail extends IMatch {
   snapshots: IOddsSnapshot[];
   finalBook?: IBookResult;
 }
+
+// ─── Saved Book (a deliberate point-in-time record of a match's book) ───
+export interface ISavedBook {
+  _id?: string;
+  matchId: string;
+  matchName: string;
+  teamA: string;
+  teamB: string;
+  teamA_PL: number;
+  teamB_PL: number;
+  snapshotCount: number;
+  savedAt: Date;
+}
+
+// ─── One row of the saved-books index: a match, summarised ───
+export interface ISavedBookMatch {
+  matchId: string;
+  matchName: string;
+  teamA: string;
+  teamB: string;
+  saveCount: number;
+  lastSavedAt: Date;
+  lastTeamA_PL: number;
+  lastTeamB_PL: number;
+}
+
+// ─── A page of results ───
+export interface IPaginated<T> {
+  items: T[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}

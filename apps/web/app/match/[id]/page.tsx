@@ -13,6 +13,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Card } from '@/components/ui/Card';
 import { getDisplayStatus, getCountdown, getFeedHealth, formatAgo } from '@/lib/format';
 import { FeedHealthBadge } from '@/components/ui/FeedHealthBadge';
+import { SaveBookButton } from '@/components/match/SaveBookButton';
 import { useNow } from '@/lib/useNow';
 
 const SNAPSHOT_WINDOW_SIZE = 30;
@@ -198,7 +199,10 @@ export default function MatchDetailPage() {
             )}
           </div>
 
-          {/* Polling Toggle */}
+          {/* Save + Polling Toggle */}
+          <div className="flex flex-col sm:flex-row gap-2 self-stretch md:self-auto w-full md:w-auto">
+            <SaveBookButton matchId={matchId} className="w-full sm:w-auto" />
+
           <div className="flex bg-surface-raised/50 p-1 rounded-xl border border-subtle/50 self-stretch md:self-auto w-full md:w-auto md:min-w-[180px]">
             {isPolling ? (
               <button
@@ -220,6 +224,7 @@ export default function MatchDetailPage() {
                 Start Polling
               </button>
             )}
+          </div>
           </div>
         </Card>
 

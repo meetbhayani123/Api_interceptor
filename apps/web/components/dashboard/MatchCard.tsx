@@ -5,6 +5,7 @@ import { LiveNumber } from '@/components/ui/LiveNumber';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { getDisplayStatus, getCountdown, getFeedHealth, formatAgo } from '@/lib/format';
 import { FeedHealthBadge } from '@/components/ui/FeedHealthBadge';
+import { SaveBookButton } from '@/components/match/SaveBookButton';
 import { useNow } from '@/lib/useNow';
 
 interface MatchCardProps {
@@ -116,7 +117,7 @@ export function MatchCard({ match, onDelete, onTogglePolling }: MatchCardProps) 
             </div>
           )}
 
-          {/* ── Bottom: Start/Stop + IDs ── */}
+          {/* ── Bottom: Start/Stop + Save + IDs ── */}
           <div className="px-3 pb-2.5 flex items-center justify-between gap-2">
             {/* Start/Stop */}
             {onTogglePolling && (
@@ -143,6 +144,8 @@ export function MatchCard({ match, onDelete, onTogglePolling }: MatchCardProps) 
                 )}
               </button>
             )}
+
+            {hasBook && <SaveBookButton matchId={match._id} size="sm" />}
 
             {/* EV + MKT — secondary, but still legible */}
             <div className="hidden xs:flex items-center gap-1 font-mono text-[11px] text-slate-600 min-w-0 overflow-hidden tabular-nums">

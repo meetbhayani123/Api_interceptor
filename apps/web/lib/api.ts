@@ -188,6 +188,29 @@ export const api = {
   getPollingStatus: (id: string) =>
     request<{ isPolling: boolean }>(`/api/match/${id}/polling-status`),
 
+  /** Save the match's current book as a permanent, timestamped record */
+  saveBook: (id: string) =>
+    request<any>(`/api/match/${id}/save-book`, { method: 'POST' }),
+
+  /** Matches that have at least one saved book, newest save first */
+  getSavedBookMatches: (params: { search?: string; page?: number; limit?: number } = {}) => {
+    const query = new URLSearchParams();
+    if (params.search) query.set('search', params.search);
+    if (params.page) query.set('page', String(params.page));
+    if (params.limit) query.set('limit', String(params.limit));
+    const qs = query.toString();
+    return request<any>(`/api/saved-books${qs ? `?${qs}` : ''}`);
+  },
+
+  /** Every saved book for one match, newest first */
+  getSavedBooksForMatch: (matchId: string, params: { page?: number; limit?: number } = {}) => {
+    const query = new URLSearchParams();
+    if (params.page) query.set('page', String(params.page));
+    if (params.limit) query.set('limit', String(params.limit));
+    const qs = query.toString();
+    return request<any>(`/api/saved-books/${matchId}${qs ? `?${qs}` : ''}`);
+  },
+
   /** Lock book */
   lockBook: (id: string, currentOdds: any) =>
     request<any>(`/api/match/${id}/lock`, {
