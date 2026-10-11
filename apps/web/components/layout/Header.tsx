@@ -7,6 +7,7 @@ function getPageTitle(pathname: string): string {
   if (pathname === '/') return 'Match Command Center';
   if (pathname.startsWith('/match/')) return 'Match Detail';
   if (pathname.startsWith('/saved')) return 'Saved Books';
+  if (pathname.startsWith('/archives')) return 'Archives';
   return 'Antigravity';
 }
 
@@ -43,6 +44,16 @@ export function Header() {
             }`}
           >
             Saved Books
+          </Link>
+          <Link
+            href="/archives"
+            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none ${
+              pathname.startsWith('/archives')
+                ? 'bg-accent/15 text-accent'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            Archives
           </Link>
           <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-surface/60 rounded-lg border border-subtle/50">
             <div className="w-2 h-2 rounded-full bg-profit animate-pulse" />

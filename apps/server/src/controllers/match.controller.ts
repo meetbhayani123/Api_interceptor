@@ -5,6 +5,7 @@ import { OddsSnapshot } from '../models/OddsSnapshot.js';
 import { OddsService } from '../services/OddsService.js';
 import { calculateMatchBook, calculateMatchBookInTimeRange, calculateMatchBookHighLow } from '../services/BookService.js';
 import { isPolling } from '../services/PollingService.js';
+import { archiveMatch } from '../services/ArchiveService.js';
 import { scheduleMatchById } from '../services/MatchScheduler.js';
 import { config } from '../config/env.js';
 
@@ -257,10 +258,20 @@ export async function deleteMatch(req: Request, res: Response) {
       });
     }
 
+    // Preserve the match and its frames before removing them. If this throws,
+    // the delete does not proceed — losing the data silently would be worse
+    // than refusing to delete.
+    const archive = await archiveMatch(matchId);
+    if (!archive) return res.status(404).json({ error: 'Match not found' });
+
     await OddsSnapshot.deleteMany({ matchId });
     await Match.findByIdAndDelete(matchId);
 
-    res.json({ message: 'Match and all snapshots deleted successfully.' });
+    res.json({
+      message: `Match deleted. ${archive.frameCount} frame${archive.frameCount === 1 ? '' : 's'} archived.`,
+      archiveId: archive.archiveId,
+      frameCount: archive.frameCount,
+    });
   } catch (error: any) {
     console.error('[MatchController] Delete error:', error);
     res.status(500).json({ error: 'Internal server error while deleting.' });

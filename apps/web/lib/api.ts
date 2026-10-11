@@ -1,4 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+export const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 /**
  * Centralized API client. All fetch calls go through here.
@@ -210,6 +210,34 @@ export const api = {
     const qs = query.toString();
     return request<any>(`/api/saved-books/${matchId}${qs ? `?${qs}` : ''}`);
   },
+
+  /** Archived (deleted) matches, newest first */
+  getArchives: (params: { search?: string; page?: number; limit?: number } = {}) => {
+    const query = new URLSearchParams();
+    if (params.search) query.set('search', params.search);
+    if (params.page) query.set('page', String(params.page));
+    if (params.limit) query.set('limit', String(params.limit));
+    const qs = query.toString();
+    return request<any>(`/api/archives${qs ? `?${qs}` : ''}`);
+  },
+
+  /** One archived match */
+  getArchive: (id: string) => request<any>(`/api/archives/${id}`),
+
+  /** Captured frames of an archived match, oldest first */
+  getArchiveFrames: (id: string, params: { page?: number; limit?: number } = {}) => {
+    const query = new URLSearchParams();
+    if (params.page) query.set('page', String(params.page));
+    if (params.limit) query.set('limit', String(params.limit));
+    const qs = query.toString();
+    return request<any>(`/api/archives/${id}/frames${qs ? `?${qs}` : ''}`);
+  },
+
+  /**
+   * Direct URL for the JSON export. Used as a plain link so the browser
+   * handles the download; the file can be large and need not pass through JS.
+   */
+  archiveDownloadUrl: (id: string) => `${API_BASE}/api/archives/${id}/download`,
 
   /** Lock book */
   lockBook: (id: string, currentOdds: any) =>

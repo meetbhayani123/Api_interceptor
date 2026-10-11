@@ -45,7 +45,9 @@ export function DeleteModal({ match, onClose, onDeleted }: DeleteModalProps) {
       </h3>
 
       <p className="text-sm text-slate-300 mb-6">
-        Permanently delete <strong className="text-white">{match.name}</strong>. All snapshots and match data will be wiped. Ensure polling is stopped first.
+        Delete <strong className="text-white">{match.name}</strong> from the dashboard. Its name and every
+        captured frame are archived first, so the data stays available under{' '}
+        <strong className="text-white">Archives</strong>. Ensure polling is stopped first.
       </p>
 
       {error && (
