@@ -44,7 +44,7 @@ export function Header() {
           >
             Saved Books
           </Link>
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-surface/60 rounded-lg border border-subtle/50">
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-surface/60 rounded-lg border border-subtle/50">
             <div className="w-2 h-2 rounded-full bg-profit animate-pulse" />
             <span className="text-xs text-slate-400 font-medium">System Online</span>
           </div>

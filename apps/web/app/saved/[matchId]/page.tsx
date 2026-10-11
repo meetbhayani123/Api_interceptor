@@ -102,9 +102,10 @@ export default function SavedBookHistoryPage() {
             ) : (
               <>
                 {/* Column headings, wide screens only — the rows are self-describing on mobile. */}
-                <div className="hidden sm:grid grid-cols-[auto_1fr_auto_auto] gap-3 px-3 pb-2 border-b border-subtle/40 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                <div className="hidden sm:grid grid-cols-[auto_1fr_auto_auto_auto] gap-3 px-3 pb-2 border-b border-subtle/40 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                   <span>#</span>
                   <span>Saved at</span>
+                  <span>Source</span>
                   <span className="text-right truncate max-w-[140px]">{teamA}</span>
                   <span className="text-right truncate max-w-[140px]">{teamB}</span>
                 </div>
@@ -113,7 +114,7 @@ export default function SavedBookHistoryPage() {
                   {items.map((row, i) => (
                     <li
                       key={row._id}
-                      className="rounded-lg sm:rounded-none bg-surface-raised/60 sm:bg-transparent border sm:border-0 sm:border-b border-subtle/50 sm:border-subtle/20 p-3 sm:px-3 sm:py-2.5 grid gap-2 sm:grid-cols-[auto_1fr_auto_auto] sm:gap-3 sm:items-center"
+                      className="rounded-lg sm:rounded-none bg-surface-raised/60 sm:bg-transparent border sm:border-0 sm:border-b border-subtle/50 sm:border-subtle/20 p-3 sm:px-3 sm:py-2.5 grid gap-2 sm:grid-cols-[auto_1fr_auto_auto_auto] sm:gap-3 sm:items-center"
                     >
                       <span className="text-[11px] font-mono text-slate-500 tabular-nums">
                         #{firstIndexOnPage - i}
@@ -124,6 +125,17 @@ export default function SavedBookHistoryPage() {
                         {row.snapshotCount > 0 && (
                           <span className="text-slate-600 ml-2">· {row.snapshotCount} frames</span>
                         )}
+                      </span>
+
+                      <span
+                        className={`w-fit px-1.5 py-0.5 rounded text-[11px] font-semibold ${
+                          row.trigger === 'auto'
+                            ? 'bg-amber-500/15 text-amber-300'
+                            : 'bg-accent/15 text-accent'
+                        }`}
+                        title={row.reason || (row.trigger === 'auto' ? 'Saved automatically' : 'Saved by hand')}
+                      >
+                        {row.trigger === 'auto' ? 'Auto' : 'Manual'}
                       </span>
 
                       <span className="flex sm:block items-center justify-between gap-2">
@@ -139,6 +151,12 @@ export default function SavedBookHistoryPage() {
                           {formatCurrency(row.teamB_PL)}
                         </span>
                       </span>
+
+                      {row.reason && row.trigger === 'auto' && (
+                        <span className="text-[11px] text-slate-500 sm:col-span-5 sm:-mt-1 break-words">
+                          {row.reason}
+                        </span>
+                      )}
                     </li>
                   ))}
                 </ul>

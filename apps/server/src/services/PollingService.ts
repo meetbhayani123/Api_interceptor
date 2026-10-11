@@ -3,6 +3,7 @@ import { Match } from '../models/Match.js';
 import { OddsSnapshot } from '../models/OddsSnapshot.js';
 import { OddsService } from './OddsService.js';
 import { addBookResults, calculateMatchBook, calculateSnapshotBook, calculateMatchBookInTimeRange, calculateMatchBookHighLow, advanceBookHighLow } from './BookService.js';
+import { recordBook } from './SavedBookService.js';
 import { getIO } from '../socket/index.js';
 import { config } from '../config/env.js';
 
@@ -83,7 +84,13 @@ async function recordPollFailure(matchId: string, error: unknown): Promise<void>
     `[PollingService] ✖ Stopping match ${matchId} after ${entry.consecutiveFailures} ` +
     `consecutive failures. Last error: ${message}`
   );
-  await stopPolling(matchId);
+
+  // A market that has closed stops advertising ACTIVE runners, so the feed
+  // starts throwing — this is the normal end of a match, not only a fault.
+  await stopPolling(
+    matchId,
+    `Market closed or feed unavailable (${entry.consecutiveFailures} consecutive errors)`
+  );
 }
 
 /**
@@ -232,7 +239,7 @@ export async function startPolling(matchId: string): Promise<boolean> {
 /**
  * Stop polling for a match.
  */
-export async function stopPolling(matchId: string): Promise<void> {
+export async function stopPolling(matchId: string, reason?: string): Promise<void> {
   const interval = activePolls.get(matchId);
   if (interval) clearInterval(interval);
 
@@ -241,7 +248,27 @@ export async function stopPolling(matchId: string): Promise<void> {
   activePolls.delete(matchId);
   health.delete(matchId);
 
-  await Match.findByIdAndUpdate(matchId, { status: 'completed' });
+  // Flip the status conditionally. This call only "wins" if the match was not
+  // already completed, which gives the auto-save below exactly-once semantics:
+  // stopPolling is reachable from the HTTP route, the failure cut-off and the
+  // scheduler sweep, and all three can land on the same match.
+  const settled = await Match.findOneAndUpdate(
+    { _id: matchId, status: { $ne: 'completed' } },
+    { $set: { status: 'completed' } }
+  ).lean();
+
+  if (!settled) return;
+
+  // Preserve the final book automatically. Otherwise the numbers a match
+  // finished on are only kept if somebody remembered to press Save Book
+  // before the page moved on.
+  try {
+    await recordBook(matchId, { trigger: 'auto', reason: reason ?? 'Polling stopped' });
+    console.log(`[PollingService] 💾 Saved final book for ${matchId} (${reason ?? 'polling stopped'})`);
+  } catch (error) {
+    // A failed save must not prevent the match from stopping.
+    console.error(`[PollingService] Could not auto-save book for ${matchId}:`, error);
+  }
 }
 
 /**

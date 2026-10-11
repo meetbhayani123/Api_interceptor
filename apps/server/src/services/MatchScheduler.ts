@@ -144,7 +144,7 @@ async function stopFinishedMatches(now: Date): Promise<void> {
     console.log(
       `[MatchScheduler] 🏁 Stopping "${match.name}" — more than ${config.maxPollHours}h past start.`
     );
-    await stopPolling(matchId);
+    await stopPolling(matchId, `Polling window elapsed (${config.maxPollHours}h after start)`);
   }
 }
 

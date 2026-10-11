@@ -72,7 +72,10 @@ export interface IMatchDetail extends IMatch {
   finalBook?: IBookResult;
 }
 
-// ─── Saved Book (a deliberate point-in-time record of a match's book) ───
+// ─── How a saved book came to exist ───
+export type SavedBookTrigger = 'manual' | 'auto';
+
+// ─── Saved Book (a point-in-time record of a match's book) ───
 export interface ISavedBook {
   _id?: string;
   matchId: string;
@@ -82,6 +85,8 @@ export interface ISavedBook {
   teamA_PL: number;
   teamB_PL: number;
   snapshotCount: number;
+  trigger: SavedBookTrigger;
+  reason?: string;
   savedAt: Date;
 }
 

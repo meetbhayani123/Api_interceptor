@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import { Match } from '../models/Match.js';
 import { SavedBook } from '../models/SavedBook.js';
-import { calculateMatchBook } from '../services/BookService.js';
+import { recordBook } from '../services/SavedBookService.js';
 
 const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 100;
@@ -29,32 +29,8 @@ export async function saveBook(req: Request, res: Response) {
   try {
     const matchId = req.params.id;
 
-    const match = await Match.findById(matchId)
-      .select({ name: 1, teamA: 1, teamB: 1, finalBook: 1, totalSnapshotCount: 1 })
-      .lean();
-
-    if (!match) return res.status(404).json({ error: 'Match not found' });
-
-    // Fall back to computing it, so a match whose cache has not been written
-    // yet can still be saved.
-    const book = match.finalBook ?? (await calculateMatchBook(matchId));
-
-    if (typeof book?.teamA_PL !== 'number' || typeof book?.teamB_PL !== 'number') {
-      return res.status(400).json({
-        error: 'This match has no book yet. Capture at least one frame before saving.',
-      });
-    }
-
-    const saved = await SavedBook.create({
-      matchId,
-      matchName: match.name,
-      teamA: match.teamA ?? '',
-      teamB: match.teamB ?? '',
-      teamA_PL: book.teamA_PL,
-      teamB_PL: book.teamB_PL,
-      snapshotCount: match.totalSnapshotCount ?? 0,
-      savedAt: new Date(),
-    });
+    const saved = await recordBook(matchId, { trigger: 'manual' });
+    if (!saved) return res.status(404).json({ error: 'Match not found' });
 
     res.status(201).json({ message: 'Book saved', savedBook: saved });
   } catch (error: any) {

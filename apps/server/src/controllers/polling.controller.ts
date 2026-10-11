@@ -15,7 +15,7 @@ export async function startPolling(req: Request, res: Response) {
 
 /** POST /api/match/:id/stop-polling */
 export async function stopPolling(req: Request, res: Response) {
-  await PollingService.stopPolling(req.params.id);
+  await PollingService.stopPolling(req.params.id, 'Stopped manually');
   res.json({ message: 'Polling stopped' });
 }
 
