@@ -1,23 +1,55 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { useParams } from 'next/navigation';
+import { Suspense, useState, useEffect, useCallback } from 'react';
+import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { formatCurrency } from '@/lib/format';
 import { Card } from '@/components/ui/Card';
 import { Spinner } from '@/components/ui/Spinner';
 import { Pagination } from '@/components/ui/Pagination';
+import { FrameTimeFilter } from '@/components/archives/FrameTimeFilter';
 
 const PAGE_SIZE = 50;
 
 export default function ArchiveDetailPage() {
+  // useSearchParams must sit under a Suspense boundary to prerender.
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-[60vh]"><Spinner size="lg" /></div>}>
+      <ArchiveDetail />
+    </Suspense>
+  );
+}
+
+function ArchiveDetail() {
   const params = useParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const archiveId = params.id as string;
+
+  // The window and page live in the URL, so a filtered view can be shared or
+  // bookmarked and the back button steps out of it.
+  const from = searchParams.get('from') ?? '';
+  const to = searchParams.get('to') ?? '';
+  const page = Math.max(1, Number.parseInt(searchParams.get('page') ?? '1', 10) || 1);
+
+  const applyParams = useCallback(
+    (next: { from?: string; to?: string; page?: number }) => {
+      const query = new URLSearchParams();
+      const nextFrom = next.from ?? from;
+      const nextTo = next.to ?? to;
+      if (nextFrom) query.set('from', nextFrom);
+      if (nextTo) query.set('to', nextTo);
+      if (next.page && next.page > 1) query.set('page', String(next.page));
+      const qs = query.toString();
+      router.push(qs ? `${pathname}?${qs}` : pathname);
+    },
+    [router, pathname, from, to]
+  );
 
   const [archive, setArchive] = useState<any>(null);
   const [frames, setFrames] = useState<any[]>([]);
-  const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
 
@@ -40,7 +72,11 @@ export default function ArchiveDetailPage() {
     if (!archiveId) return;
     setFramesLoading(true);
     try {
-      const data = await api.getArchiveFrames(archiveId, { page, limit: PAGE_SIZE });
+      const data = await api.getArchiveFrames(archiveId, {
+        page, limit: PAGE_SIZE,
+        from: from || undefined,
+        to: to || undefined,
+      });
       setFrames(data.items ?? []);
       setTotalPages(data.totalPages ?? 1);
       setTotal(data.total ?? 0);
@@ -49,7 +85,7 @@ export default function ArchiveDetailPage() {
     } finally {
       setFramesLoading(false);
     }
-  }, [archiveId, page]);
+  }, [archiveId, page, from, to]);
 
   useEffect(() => { fetchArchive(); }, [fetchArchive]);
   useEffect(() => { fetchFrames(); }, [fetchFrames]);
@@ -103,13 +139,13 @@ export default function ArchiveDetailPage() {
           {/* A plain link, not a fetch: the export can be large and the browser
               handles saving it far better than JavaScript would. */}
           <a
-            href={api.archiveDownloadUrl(archiveId)}
+            href={api.archiveDownloadUrl(archiveId, { from: from || undefined, to: to || undefined })}
             className="shrink-0 inline-flex items-center justify-center gap-2 min-h-[48px] px-5 py-3 rounded-lg border border-accent/30 bg-accent/15 text-accent text-sm font-semibold hover:bg-accent/25 transition-colors focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
           >
             <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
-            Download JSON
+            Download JSON{(from || to) ? ' (filtered)' : ''}
           </a>
         </Card>
 
@@ -135,12 +171,33 @@ export default function ArchiveDetailPage() {
 
         <Card padding="none" className="flex flex-col overflow-hidden">
           <div className="p-3 sm:p-4 flex flex-col gap-3">
-            <h2 className="text-sm font-semibold text-slate-300">Captured Frames</h2>
+            <div className="flex items-baseline justify-between gap-3 flex-wrap">
+              <h2 className="text-sm font-semibold text-slate-300">Captured Frames</h2>
+              {(from || to) && (
+                <span className="text-[11px] font-semibold text-accent tabular-nums">
+                  Filtered · {total} of {archive?.frameCount ?? total} frames
+                </span>
+              )}
+            </div>
+
+            <FrameTimeFilter
+              from={from}
+              to={to}
+              firstFrameAt={archive?.firstFrameAt}
+              lastFrameAt={archive?.lastFrameAt}
+              busy={framesLoading}
+              onFind={({ from: f, to: t }) => applyParams({ from: f, to: t, page: 1 })}
+              onClear={() => applyParams({ from: '', to: '', page: 1 })}
+            />
 
             {framesLoading ? (
               <div className="flex justify-center py-12"><Spinner size="lg" /></div>
             ) : frames.length === 0 ? (
-              <p className="text-sm text-slate-500 text-center py-12">This archive has no frames.</p>
+              <p className="text-sm text-slate-500 text-center py-12">
+                {from || to
+                  ? 'No odds were captured in that time window.'
+                  : 'This archive has no frames.'}
+              </p>
             ) : (
               <div className="overflow-x-auto -mx-3 sm:mx-0 px-3 sm:px-0">
                 <table className="w-full min-w-[640px] text-xs tabular-nums border-collapse">
@@ -177,7 +234,7 @@ export default function ArchiveDetailPage() {
             )}
 
             {!framesLoading && frames.length > 0 && (
-              <Pagination page={page} totalPages={totalPages} total={total} onPageChange={setPage} noun="frame" />
+              <Pagination page={page} totalPages={totalPages} total={total} onPageChange={(next) => applyParams({ page: next })} noun="frame" />
             )}
           </div>
         </Card>
