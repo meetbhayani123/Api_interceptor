@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState, useEffect, useCallback } from 'react';
+import { Suspense, useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
@@ -8,7 +8,7 @@ import { formatCurrency } from '@/lib/format';
 import { Card } from '@/components/ui/Card';
 import { Spinner } from '@/components/ui/Spinner';
 import { Pagination } from '@/components/ui/Pagination';
-import { FrameTimeFilter } from '@/components/archives/FrameTimeFilter';
+import { FrameJumpToTime } from '@/components/archives/FrameJumpToTime';
 
 const PAGE_SIZE = 50;
 
@@ -28,24 +28,53 @@ function ArchiveDetail() {
   const searchParams = useSearchParams();
   const archiveId = params.id as string;
 
-  // The window and page live in the URL, so a filtered view can be shared or
-  // bookmarked and the back button steps out of it.
-  const from = searchParams.get('from') ?? '';
-  const to = searchParams.get('to') ?? '';
+  // Page and the moment jumped to live in the URL, so a position can be shared
+  // or bookmarked and the back button returns to where you were.
+  const at = searchParams.get('at') ?? '';
   const page = Math.max(1, Number.parseInt(searchParams.get('page') ?? '1', 10) || 1);
 
-  const applyParams = useCallback(
-    (next: { from?: string; to?: string; page?: number }) => {
+  const [jumping, setJumping] = useState(false);
+  const [jumpNotice, setJumpNotice] = useState<string | null>(null);
+
+  const targetRowRef = useRef<HTMLTableRowElement | null>(null);
+
+  /** The frame the user jumped to, so it can be marked among fifty rows. */
+  const isTarget = (frame: { capturedAt: string | Date }) =>
+    Boolean(at) && new Date(frame.capturedAt).getTime() === new Date(at).getTime();
+
+  const goTo = useCallback(
+    (next: { page: number; at?: string }) => {
       const query = new URLSearchParams();
-      const nextFrom = next.from ?? from;
-      const nextTo = next.to ?? to;
-      if (nextFrom) query.set('from', nextFrom);
-      if (nextTo) query.set('to', nextTo);
-      if (next.page && next.page > 1) query.set('page', String(next.page));
+      if (next.page > 1) query.set('page', String(next.page));
+      if (next.at) query.set('at', next.at);
       const qs = query.toString();
       router.push(qs ? `${pathname}?${qs}` : pathname);
     },
-    [router, pathname, from, to]
+    [router, pathname]
+  );
+
+  /**
+   * Ask the server which page holds this moment, then go there. The page is
+   * worked out from an indexed count rather than by walking rows, so this is
+   * one quick request regardless of how long the capture ran.
+   */
+  const handleJump = useCallback(
+    async (isoTime: string) => {
+      setJumping(true);
+      setJumpNotice(null);
+      try {
+        const found = await api.locateArchiveFrame(archiveId, isoTime, PAGE_SIZE);
+        if (found.afterLastFrame) {
+          setJumpNotice('That time is after the last capture — showing the final frames.');
+        }
+        goTo({ page: found.page, at: found.capturedAt ?? isoTime });
+      } catch (err: any) {
+        setJumpNotice(err?.message || 'Could not find that time.');
+      } finally {
+        setJumping(false);
+      }
+    },
+    [archiveId, goTo]
   );
 
   const [archive, setArchive] = useState<any>(null);
@@ -72,11 +101,7 @@ function ArchiveDetail() {
     if (!archiveId) return;
     setFramesLoading(true);
     try {
-      const data = await api.getArchiveFrames(archiveId, {
-        page, limit: PAGE_SIZE,
-        from: from || undefined,
-        to: to || undefined,
-      });
+      const data = await api.getArchiveFrames(archiveId, { page, limit: PAGE_SIZE });
       setFrames(data.items ?? []);
       setTotalPages(data.totalPages ?? 1);
       setTotal(data.total ?? 0);
@@ -85,9 +110,16 @@ function ArchiveDetail() {
     } finally {
       setFramesLoading(false);
     }
-  }, [archiveId, page, from, to]);
+  }, [archiveId, page]);
 
   useEffect(() => { fetchArchive(); }, [fetchArchive]);
+
+  // Bring the jumped-to row into view; landing on page 7 with nothing
+  // highlighted on screen would leave the user hunting for it.
+  useEffect(() => {
+    if (!at || framesLoading) return;
+    targetRowRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, [at, framesLoading, frames]);
   useEffect(() => { fetchFrames(); }, [fetchFrames]);
 
   if (loading) {
@@ -139,13 +171,13 @@ function ArchiveDetail() {
           {/* A plain link, not a fetch: the export can be large and the browser
               handles saving it far better than JavaScript would. */}
           <a
-            href={api.archiveDownloadUrl(archiveId, { from: from || undefined, to: to || undefined })}
+            href={api.archiveDownloadUrl(archiveId)}
             className="shrink-0 inline-flex items-center justify-center gap-2 min-h-[48px] px-5 py-3 rounded-lg border border-accent/30 bg-accent/15 text-accent text-sm font-semibold hover:bg-accent/25 transition-colors focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
           >
             <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
-            Download JSON{(from || to) ? ' (filtered)' : ''}
+            Download JSON
           </a>
         </Card>
 
@@ -171,33 +203,21 @@ function ArchiveDetail() {
 
         <Card padding="none" className="flex flex-col overflow-hidden">
           <div className="p-3 sm:p-4 flex flex-col gap-3">
-            <div className="flex items-baseline justify-between gap-3 flex-wrap">
-              <h2 className="text-sm font-semibold text-slate-300">Captured Frames</h2>
-              {(from || to) && (
-                <span className="text-[11px] font-semibold text-accent tabular-nums">
-                  Filtered · {total} of {archive?.frameCount ?? total} frames
-                </span>
-              )}
-            </div>
+            <h2 className="text-sm font-semibold text-slate-300">Captured Frames</h2>
 
-            <FrameTimeFilter
-              from={from}
-              to={to}
+            <FrameJumpToTime
+              value={at}
               firstFrameAt={archive?.firstFrameAt}
               lastFrameAt={archive?.lastFrameAt}
-              busy={framesLoading}
-              onFind={({ from: f, to: t }) => applyParams({ from: f, to: t, page: 1 })}
-              onClear={() => applyParams({ from: '', to: '', page: 1 })}
+              busy={jumping || framesLoading}
+              notice={jumpNotice}
+              onFind={handleJump}
             />
 
             {framesLoading ? (
               <div className="flex justify-center py-12"><Spinner size="lg" /></div>
             ) : frames.length === 0 ? (
-              <p className="text-sm text-slate-500 text-center py-12">
-                {from || to
-                  ? 'No odds were captured in that time window.'
-                  : 'This archive has no frames.'}
-              </p>
+              <p className="text-sm text-slate-500 text-center py-12">This archive has no frames.</p>
             ) : (
               <div className="overflow-x-auto -mx-3 sm:mx-0 px-3 sm:px-0">
                 <table className="w-full min-w-[640px] text-xs tabular-nums border-collapse">
@@ -213,7 +233,13 @@ function ArchiveDetail() {
                   </thead>
                   <tbody>
                     {frames.map((f, i) => (
-                      <tr key={f._id} className="border-b border-subtle/20 hover:bg-surface-raised/40">
+                      <tr
+                        key={f._id}
+                        ref={isTarget(f) ? targetRowRef : undefined}
+                        className={`border-b border-subtle/20 hover:bg-surface-raised/40 ${
+                          isTarget(f) ? 'bg-accent/10 ring-1 ring-inset ring-accent/40' : ''
+                        }`}
+                      >
                         <td className="py-1.5 pr-3 text-slate-600 font-mono">{firstIndexOnPage + i}</td>
                         <td className="py-1.5 pr-3 text-slate-400 whitespace-nowrap">
                           {new Date(f.capturedAt).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'medium' })}
@@ -234,7 +260,7 @@ function ArchiveDetail() {
             )}
 
             {!framesLoading && frames.length > 0 && (
-              <Pagination page={page} totalPages={totalPages} total={total} onPageChange={(next) => applyParams({ page: next })} noun="frame" />
+              <Pagination page={page} totalPages={totalPages} total={total} onPageChange={(next) => goTo({ page: next })} noun="frame" />
             )}
           </div>
         </Card>

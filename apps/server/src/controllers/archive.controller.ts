@@ -20,32 +20,6 @@ function readPaging(req: Request, fallback = DEFAULT_PAGE_SIZE) {
 
 const isValidId = (id: string) => mongoose.Types.ObjectId.isValid(id);
 
-/**
- * Optional capture-time window from ?from=&to=.
- *
- * Both bounds are inclusive and independent — a `from` alone means "everything
- * after", a `to` alone "everything up to". Unparseable values are ignored
- * rather than rejected, so a stray query string degrades to the full range
- * instead of erroring the page.
- */
-function readTimeRange(req: Request): { capturedAt?: { $gte?: Date; $lte?: Date } } {
-  const parse = (raw: unknown): Date | undefined => {
-    const value = String(raw ?? '').trim();
-    if (!value) return undefined;
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? undefined : date;
-  };
-
-  const from = parse(req.query.from);
-  const to = parse(req.query.to);
-  if (!from && !to) return {};
-
-  const capturedAt: { $gte?: Date; $lte?: Date } = {};
-  if (from) capturedAt.$gte = from;
-  if (to) capturedAt.$lte = to;
-  return { capturedAt };
-}
-
 /** GET /api/archives?search=&page=&limit= — archived matches, newest first */
 export async function listArchives(req: Request, res: Response) {
   try {
@@ -95,8 +69,7 @@ export async function listArchiveFrames(req: Request, res: Response) {
     if (!isValidId(id)) return res.status(404).json({ error: 'Archive not found' });
 
     const { page, limit, skip } = readPaging(req);
-    const range = readTimeRange(req);
-    const filter = { archiveId: id, ...range };
+    const filter = { archiveId: id };
 
     const [items, total] = await Promise.all([
       ArchivedFrame.find(filter)
@@ -113,15 +86,75 @@ export async function listArchiveFrames(req: Request, res: Response) {
       limit,
       total,
       totalPages: Math.max(1, Math.ceil(total / limit)),
-      // Echo back what was actually applied, so the UI can show the window it
-      // is displaying rather than what the user typed.
-      filtered: Boolean(range.capturedAt),
-      from: range.capturedAt?.$gte ?? null,
-      to: range.capturedAt?.$lte ?? null,
     });
   } catch (error: any) {
     console.error('[ArchiveController] Frames error:', error);
     res.status(500).json({ error: 'Failed to load frames' });
+  }
+}
+
+/**
+ * GET /api/archives/:id/locate?at=&limit=
+ *
+ * Which page of the frame table contains a given moment.
+ *
+ * Counting the frames before `at` gives its position directly, so this is one
+ * indexed count rather than scanning rows: the page is that position divided
+ * by the page size. Resolves to the first frame at or after `at`, so a time
+ * that falls between captures lands on the next one rather than failing.
+ */
+export async function locateFrame(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    if (!isValidId(id)) return res.status(404).json({ error: 'Archive not found' });
+
+    const raw = String(req.query.at ?? '').trim();
+    const at = new Date(raw);
+    if (!raw || Number.isNaN(at.getTime())) {
+      return res.status(400).json({ error: 'Provide a valid time as ?at=' });
+    }
+
+    const { limit } = readPaging(req);
+
+    const [before, total] = await Promise.all([
+      ArchivedFrame.countDocuments({ archiveId: id, capturedAt: { $lt: at } }),
+      ArchivedFrame.countDocuments({ archiveId: id }),
+    ]);
+
+    if (total === 0) {
+      return res.status(404).json({ error: 'This archive has no frames' });
+    }
+
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    // A time past the last frame would land one page too far.
+    const page = Math.min(totalPages, Math.floor(before / limit) + 1);
+
+    // The frame the user actually lands on.
+    const target = await ArchivedFrame.findOne({ archiveId: id, capturedAt: { $gte: at } })
+      .sort({ capturedAt: 1, sequenceId: 1 })
+      .select({ sequenceId: 1, capturedAt: 1 })
+      .lean();
+
+    const landed = target
+      ?? (await ArchivedFrame.findOne({ archiveId: id })
+        .sort({ capturedAt: -1, sequenceId: -1 })
+        .select({ sequenceId: 1, capturedAt: 1 })
+        .lean());
+
+    res.json({
+      page,
+      totalPages,
+      total,
+      limit,
+      position: before + 1,
+      sequenceId: landed?.sequenceId ?? null,
+      capturedAt: landed?.capturedAt ?? null,
+      // True when `at` is past every frame, so the UI can say so.
+      afterLastFrame: !target,
+    });
+  } catch (error: any) {
+    console.error('[ArchiveController] Locate error:', error);
+    res.status(500).json({ error: 'Failed to locate that time' });
   }
 }
 
@@ -140,19 +173,15 @@ export async function downloadArchive(req: Request, res: Response) {
     const archive = await ArchivedMatch.findById(id).lean();
     if (!archive) return res.status(404).json({ error: 'Archive not found' });
 
-    // Same window as the table, so the export matches what was on screen.
-    const range = readTimeRange(req);
-
     const safeName = (archive.name || 'match')
       .replace(/[^a-z0-9]+/gi, '-')
       .replace(/^-+|-+$/g, '')
       .toLowerCase()
       .slice(0, 80);
     const stamp = new Date(archive.archivedAt).toISOString().slice(0, 10);
-    const rangeSuffix = range.capturedAt ? '-filtered' : '';
 
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="${safeName}-${stamp}${rangeSuffix}.json"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${safeName}-${stamp}.json"`);
 
     // Header first, then frames one at a time.
     res.write('{\n');
@@ -169,13 +198,10 @@ export async function downloadArchive(req: Request, res: Response) {
       firstFrameAt: archive.firstFrameAt,
       lastFrameAt: archive.lastFrameAt,
       archivedAt: archive.archivedAt,
-      // Present only when the export covers part of the capture.
-      filterFrom: range.capturedAt?.$gte ?? undefined,
-      filterTo: range.capturedAt?.$lte ?? undefined,
     }, null, 2).split('\n').join('\n  ')},\n`);
     res.write('  "frames": [\n');
 
-    const cursor = ArchivedFrame.find({ archiveId: id, ...range })
+    const cursor = ArchivedFrame.find({ archiveId: id })
       .sort({ capturedAt: 1, sequenceId: 1 })
       .select({ _id: 0, sequenceId: 1, capturedAt: 1, teamA: 1, teamB: 1 })
       .lean()

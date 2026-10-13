@@ -224,36 +224,24 @@ export const api = {
   /** One archived match */
   getArchive: (id: string) => request<any>(`/api/archives/${id}`),
 
-  /**
-   * Captured frames of an archived match, oldest first.
-   * `from`/`to` are ISO strings bounding capture time; both are optional and
-   * independent.
-   */
-  getArchiveFrames: (
-    id: string,
-    params: { page?: number; limit?: number; from?: string; to?: string } = {}
-  ) => {
+  /** Captured frames of an archived match, oldest first */
+  getArchiveFrames: (id: string, params: { page?: number; limit?: number } = {}) => {
     const query = new URLSearchParams();
     if (params.page) query.set('page', String(params.page));
     if (params.limit) query.set('limit', String(params.limit));
-    if (params.from) query.set('from', params.from);
-    if (params.to) query.set('to', params.to);
     const qs = query.toString();
     return request<any>(`/api/archives/${id}/frames${qs ? `?${qs}` : ''}`);
   },
 
+  /** Which page of the frame table holds a given moment */
+  locateArchiveFrame: (id: string, at: string, limit: number) =>
+    request<any>(`/api/archives/${id}/locate?at=${encodeURIComponent(at)}&limit=${limit}`),
+
   /**
    * Direct URL for the JSON export. Used as a plain link so the browser
    * handles the download; the file can be large and need not pass through JS.
-   * Carries the same window as the table, so the export matches the screen.
    */
-  archiveDownloadUrl: (id: string, params: { from?: string; to?: string } = {}) => {
-    const query = new URLSearchParams();
-    if (params.from) query.set('from', params.from);
-    if (params.to) query.set('to', params.to);
-    const qs = query.toString();
-    return `${API_BASE}/api/archives/${id}/download${qs ? `?${qs}` : ''}`;
-  },
+  archiveDownloadUrl: (id: string) => `${API_BASE}/api/archives/${id}/download`,
 
   /** Lock book */
   lockBook: (id: string, currentOdds: any) =>
