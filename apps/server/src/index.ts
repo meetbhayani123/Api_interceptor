@@ -10,6 +10,7 @@ import pollingRoutes from './routes/polling.routes.js';
 import savedBookRoutes from './routes/savedBook.routes.js';
 import archiveRoutes from './routes/archive.routes.js';
 import { initMatchScheduler } from './services/MatchScheduler.js';
+import { initArchiveRetention } from './services/ArchiveRetentionService.js';
 
 // ─── Express App ───
 const app = express();
@@ -26,6 +27,10 @@ if (!allowedOrigins) {
 }
 
 app.use(cors({
+  // The archive export sets a filename in Content-Disposition. Without
+  // exposing it, a cross-origin fetch cannot read that header and the
+  // download would have to invent its own name.
+  exposedHeaders: ['Content-Disposition'],
   origin(origin, callback) {
     // No Origin header: same-origin, curl, or server-to-server. Not a browser
     // cross-origin request, so CORS does not apply.
@@ -79,6 +84,9 @@ mongoose
 
       // Start the match scheduler — auto-polls matches when their startTime arrives
       initMatchScheduler();
+
+      // Start the retention job — purges archives past the retention window
+      initArchiveRetention();
     });
   })
   .catch((error) => {

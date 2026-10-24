@@ -112,14 +112,16 @@ describe('archiveMatch', () => {
     assert.equal(archive?.name, 'Pakistan v Sri Lanka');
   });
 
-  it('archived frames are NOT subject to the snapshot TTL', async (t) => {
+  it('archived frames carry no TTL index of their own', async (t) => {
     if (!available) return t.skip('no MongoDB');
-    // odds_snapshots expires rows after 30 days. Copying into a TTL'd
-    // collection would quietly erase the archive, so this checks there is no
-    // expiry index on archived_frames.
+    // Archives DO expire — ArchiveRetentionService purges them after the
+    // retention window — but that must stay keyed on `archivedAt`, when the
+    // record was made. A TTL index here could only key on `capturedAt`, when
+    // the odds were originally recorded, so archiving an old match would see
+    // its frames vanish immediately. This guards against someone adding one.
     const indexes = await ArchivedFrame.collection.indexes();
     const expiring = indexes.filter((i: any) => i.expireAfterSeconds !== undefined);
-    assert.equal(expiring.length, 0, `archived_frames must not expire, found: ${JSON.stringify(expiring)}`);
+    assert.equal(expiring.length, 0, `archived_frames must not self-expire, found: ${JSON.stringify(expiring)}`);
   });
 
   it('records the frame time range', async (t) => {

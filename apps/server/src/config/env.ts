@@ -53,6 +53,12 @@ export const config = {
   // costs several seconds of internal retries, so 20 is roughly 2-3 minutes of
   // sustained failure — long enough to ride out a blip, short enough that a
   // broken feed does not hammer the upstream API for hours.
+  // Archived matches older than this are purged by the retention job. The
+  // export handed to the user at delete time is the copy that lasts; the
+  // archive is a grace period for re-downloading it.
+  archiveRetentionDays: Number(
+    process.env.ARCHIVE_RETENTION_DAYS || envFile.ARCHIVE_RETENTION_DAYS || 15
+  ),
   maxConsecutiveFailures: Number(
     process.env.MAX_CONSECUTIVE_FAILURES || envFile.MAX_CONSECUTIVE_FAILURES || 20
   ),

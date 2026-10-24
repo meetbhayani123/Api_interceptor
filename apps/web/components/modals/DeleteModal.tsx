@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { api } from '@/lib/api';
+import { downloadFile, exportFilename } from '@/lib/download';
 import { Modal } from '@/components/ui/Modal';
 import { Spinner } from '@/components/ui/Spinner';
 
@@ -14,23 +15,51 @@ interface DeleteModalProps {
 export function DeleteModal({ match, onClose, onDeleted }: DeleteModalProps) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [phase, setPhase] = useState<'idle' | 'deleting' | 'downloading'>('idle');
   const [error, setError] = useState<string | null>(null);
+  const [downloadFailed, setDownloadFailed] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!password) return;
 
     setLoading(true);
+    setPhase('deleting');
     setError(null);
+    setDownloadFailed(null);
+
+    let archiveId: string | undefined;
 
     try {
-      await api.deleteMatch(match._id, password);
-      onDeleted();
+      const result = await api.deleteMatch(match._id, password);
+      archiveId = result?.archiveId;
     } catch (err: any) {
       setError(err.message);
-    } finally {
       setLoading(false);
+      setPhase('idle');
+      return;
     }
+
+    // The match is gone. Hand over the export before closing, because the
+    // archive only survives the retention window and this file does not.
+    if (archiveId) {
+      setPhase('downloading');
+      try {
+        await downloadFile(api.archiveDownloadUrl(archiveId), exportFilename(match.name));
+      } catch (err: any) {
+        // Deliberately not fatal: the match is already deleted, and the
+        // archive is still there to download from for now. Blocking here
+        // would leave the dialog stuck on a match that no longer exists.
+        setDownloadFailed(err?.message || 'Could not save the file.');
+        setLoading(false);
+        setPhase('idle');
+        return;
+      }
+    }
+
+    setLoading(false);
+    setPhase('idle');
+    onDeleted();
   };
 
   return (
@@ -45,14 +74,31 @@ export function DeleteModal({ match, onClose, onDeleted }: DeleteModalProps) {
       </h3>
 
       <p className="text-sm text-slate-300 mb-6">
-        Delete <strong className="text-white">{match.name}</strong> from the dashboard. Its name and every
-        captured frame are archived first, so the data stays available under{' '}
-        <strong className="text-white">Archives</strong>. Ensure polling is stopped first.
+        Delete <strong className="text-white">{match.name}</strong> from the dashboard. Every captured frame is
+        archived and a <strong className="text-white">JSON export downloads to your device</strong> — keep it,
+        as archives are removed after 15 days. Ensure polling is stopped first.
       </p>
 
       {error && (
-        <div className="mb-4 p-3 rounded-xl bg-danger/10 border border-danger/30 text-rose-200 text-sm">
+        <div role="alert" className="mb-4 p-3 rounded-xl bg-danger/10 border border-danger/30 text-rose-200 text-sm">
           {error}
+        </div>
+      )}
+
+      {downloadFailed && (
+        <div role="alert" className="mb-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-sm">
+          <p className="font-semibold mb-1">Deleted, but the download did not save.</p>
+          <p className="text-amber-200/90">
+            {downloadFailed} The export is still available from{' '}
+            <a href="/archives" className="underline hover:brightness-125">Archives</a> for 15 days.
+          </p>
+          <button
+            type="button"
+            onClick={onDeleted}
+            className="mt-2 px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-100 text-xs font-semibold focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none"
+          >
+            Close
+          </button>
         </div>
       )}
 
@@ -83,7 +129,13 @@ export function DeleteModal({ match, onClose, onDeleted }: DeleteModalProps) {
                 : 'bg-danger hover:brightness-110 text-white'
               }`}
           >
-            {loading ? <Spinner size="sm" /> : 'Wipe Record'}
+            {phase === 'deleting' ? (
+              <><Spinner size="sm" /> Deleting…</>
+            ) : phase === 'downloading' ? (
+              <><Spinner size="sm" /> Saving export…</>
+            ) : (
+              'Delete & Download'
+            )}
           </button>
         </div>
       </form>

@@ -24,6 +24,10 @@ services:
       # older than this are never auto-started. Raise for longer formats.
       - key: MAX_POLL_HOURS
         value: 12
+      # Archived matches are purged this many days after archiving. The JSON
+      # export handed over at delete time is the copy that lasts.
+      - key: ARCHIVE_RETENTION_DAYS
+        value: 15
       - key: NODE_OPTIONS
         value: --max-old-space-size=400
       # ── Set these manually in the Render dashboard (never hardcode secrets) ──
