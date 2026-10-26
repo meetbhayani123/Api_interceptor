@@ -27,7 +27,7 @@ services:
       # Archived matches are purged this many days after archiving. The JSON
       # export handed over at delete time is the copy that lasts.
       - key: ARCHIVE_RETENTION_DAYS
-        value: 15
+        value: 5
       - key: NODE_OPTIONS
         value: --max-old-space-size=400
       # ── Set these manually in the Render dashboard (never hardcode secrets) ──

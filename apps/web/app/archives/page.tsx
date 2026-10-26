@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { formatCurrency } from '@/lib/format';
+import { DEFAULT_ARCHIVE_RETENTION_DAYS } from '@repo/types';
 import { Card } from '@/components/ui/Card';
 import { Spinner } from '@/components/ui/Spinner';
 import { Pagination } from '@/components/ui/Pagination';
@@ -57,8 +58,9 @@ export default function ArchivesPage() {
         <Card padding="sm">
           <h1 className="text-lg sm:text-xl font-bold text-slate-100">Archives</h1>
           <p className="text-sm text-slate-400 mt-1">
-            Matches you have deleted, with every frame they captured. Archives are removed after
-            15 days — the JSON export you were given at delete time is the copy that lasts.
+            Matches you have deleted, with every frame they captured. Archives are removed after{' '}
+            {DEFAULT_ARCHIVE_RETENTION_DAYS} days — the JSON export you were given at delete time is the
+            copy that lasts.
           </p>
 
           <label htmlFor="archive-search" className="sr-only">Search archived matches</label>

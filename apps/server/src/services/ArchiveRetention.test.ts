@@ -5,6 +5,7 @@ import { ArchivedMatch } from '../models/ArchivedMatch.js';
 import { ArchivedFrame } from '../models/ArchivedFrame.js';
 import { SavedBook } from '../models/SavedBook.js';
 import { purgeExpiredArchives, retentionCutoff } from './ArchiveRetentionService.js';
+import { DEFAULT_ARCHIVE_RETENTION_DAYS } from '@repo/types';
 
 /** Needs a MongoDB; skipped cleanly without one. */
 const URI = process.env.MONGO_TEST_URI ?? 'mongodb://127.0.0.1:27018/archive_retention_test';
@@ -56,7 +57,7 @@ describe('archive retention', () => {
   it('keeps archives inside the window', async (t) => {
     if (!available) return t.skip('no MongoDB');
     await seedArchive('Yesterday', 1);
-    await seedArchive('Two weeks', 14);
+    await seedArchive('Four days', 4);
 
     const result = await purgeExpiredArchives(NOW);
 
@@ -67,7 +68,7 @@ describe('archive retention', () => {
 
   it('purges archives past the window, frames included', async (t) => {
     if (!available) return t.skip('no MongoDB');
-    await seedArchive('Old', 20, 5);
+    await seedArchive('Old', 9, 5);
     await seedArchive('Recent', 2, 5);
 
     const result = await purgeExpiredArchives(NOW);
@@ -111,8 +112,8 @@ describe('archive retention', () => {
   it('treats the boundary consistently', async (t) => {
     if (!available) return t.skip('no MongoDB');
     // Just inside stays, comfortably outside goes.
-    await seedArchive('Just inside', 14.9, 1);
-    await seedArchive('Just outside', 15.1, 1);
+    await seedArchive('Just inside', 4.9, 1);
+    await seedArchive('Just outside', 5.1, 1);
 
     await purgeExpiredArchives(NOW);
 
@@ -140,8 +141,11 @@ describe('archive retention', () => {
     assert.deepEqual(await purgeExpiredArchives(NOW), { archivesDeleted: 0, framesDeleted: 0 });
   });
 
-  it('puts the cutoff 15 days back by default', async (t) => {
+  it('puts the cutoff at the configured window', async (t) => {
     if (!available) return t.skip('no MongoDB');
-    assert.equal(retentionCutoff(NOW).toISOString(), daysAgo(15).toISOString());
+    assert.equal(
+      retentionCutoff(NOW).toISOString(),
+      daysAgo(DEFAULT_ARCHIVE_RETENTION_DAYS).toISOString()
+    );
   });
 });

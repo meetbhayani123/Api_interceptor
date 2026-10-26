@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { DEFAULT_ARCHIVE_RETENTION_DAYS } from '@repo/types';
 
 /**
  * Centralized environment configuration.
@@ -57,7 +58,9 @@ export const config = {
   // export handed to the user at delete time is the copy that lasts; the
   // archive is a grace period for re-downloading it.
   archiveRetentionDays: Number(
-    process.env.ARCHIVE_RETENTION_DAYS || envFile.ARCHIVE_RETENTION_DAYS || 15
+    process.env.ARCHIVE_RETENTION_DAYS ||
+      envFile.ARCHIVE_RETENTION_DAYS ||
+      DEFAULT_ARCHIVE_RETENTION_DAYS
   ),
   maxConsecutiveFailures: Number(
     process.env.MAX_CONSECUTIVE_FAILURES || envFile.MAX_CONSECUTIVE_FAILURES || 20

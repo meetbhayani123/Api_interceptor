@@ -1,3 +1,14 @@
+// ─── Archive retention ───
+/**
+ * Days an archived match is kept before the retention job removes it.
+ *
+ * Shared so the server default and the wording shown to users cannot drift —
+ * they already did once, leaving the archives page claiming nothing expired.
+ * The server honours ARCHIVE_RETENTION_DAYS over this; change both together
+ * if you override it.
+ */
+export const DEFAULT_ARCHIVE_RETENTION_DAYS = 5;
+
 // ─── Odds Entry (legacy book locking) ───
 export interface IOddsEntry {
   timestamp: Date;

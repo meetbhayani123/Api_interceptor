@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { api } from '@/lib/api';
 import { downloadFile, exportFilename } from '@/lib/download';
+import { DEFAULT_ARCHIVE_RETENTION_DAYS } from '@repo/types';
 import { Modal } from '@/components/ui/Modal';
 import { Spinner } from '@/components/ui/Spinner';
 
@@ -76,7 +77,7 @@ export function DeleteModal({ match, onClose, onDeleted }: DeleteModalProps) {
       <p className="text-sm text-slate-300 mb-6">
         Delete <strong className="text-white">{match.name}</strong> from the dashboard. Every captured frame is
         archived and a <strong className="text-white">JSON export downloads to your device</strong> — keep it,
-        as archives are removed after 15 days. Ensure polling is stopped first.
+        as archives are removed after {DEFAULT_ARCHIVE_RETENTION_DAYS} days. Ensure polling is stopped first.
       </p>
 
       {error && (
@@ -90,7 +91,8 @@ export function DeleteModal({ match, onClose, onDeleted }: DeleteModalProps) {
           <p className="font-semibold mb-1">Deleted, but the download did not save.</p>
           <p className="text-amber-200/90">
             {downloadFailed} The export is still available from{' '}
-            <a href="/archives" className="underline hover:brightness-125">Archives</a> for 15 days.
+            <a href="/archives" className="underline hover:brightness-125">Archives</a> for{' '}
+            {DEFAULT_ARCHIVE_RETENTION_DAYS} days.
           </p>
           <button
             type="button"
