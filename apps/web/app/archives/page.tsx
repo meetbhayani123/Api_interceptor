@@ -7,6 +7,7 @@ import { formatCurrency } from '@/lib/format';
 import { Card } from '@/components/ui/Card';
 import { Spinner } from '@/components/ui/Spinner';
 import { Pagination } from '@/components/ui/Pagination';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 
 const PAGE_SIZE = 20;
 
@@ -21,6 +22,7 @@ export default function ArchivesPage() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
 
   // Debounce typing so each keystroke does not hit the server.
   useEffect(() => {
@@ -55,7 +57,8 @@ export default function ArchivesPage() {
         <Card padding="sm">
           <h1 className="text-lg sm:text-xl font-bold text-slate-100">Archives</h1>
           <p className="text-sm text-slate-400 mt-1">
-            Matches you have deleted, with every frame they captured. Nothing here expires.
+            Matches you have deleted, with every frame they captured. Archives are removed after
+            15 days — the JSON export you were given at delete time is the copy that lasts.
           </p>
 
           <label htmlFor="archive-search" className="sr-only">Search archived matches</label>
@@ -100,12 +103,26 @@ export default function ArchivesPage() {
             ) : (
               <ul className="grid gap-2">
                 {items.map((a) => (
-                  <li key={a._id}>
+                  <li key={a._id} className="relative group/row">
+                    <button
+                      type="button"
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setDeleteTarget(a); }}
+                      title="Delete this archive"
+                      aria-label={`Delete archive ${a.name}`}
+                      className="absolute top-2 right-2 z-20 p-1.5 rounded-full bg-surface/90 text-slate-500 hover:bg-danger hover:text-white border border-subtle/50 hover:border-transparent opacity-70 sm:opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-danger focus-visible:outline-none transition-all duration-200 after:absolute after:-inset-2.5 after:content-['']"
+                    >
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+
                     <Link
                       href={`/archives/${a._id}`}
                       className="block rounded-lg bg-surface-raised/60 border border-subtle/50 border-l-2 border-l-accent/50 hover:border-accent/30 transition-colors focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none p-3"
                     >
-                      <div className="flex items-start justify-between gap-2 mb-2">
+                      {/* Padded right so the frame count clears the delete control,
+                          which is visible rather than hover-revealed on touch. */}
+                      <div className="flex items-start justify-between gap-2 mb-2 pr-7">
                         <h2 className="font-semibold text-sm text-slate-200 min-w-0 break-words">{a.name}</h2>
                         <span className="shrink-0 px-1.5 py-0.5 rounded bg-slate-700/50 text-[11px] font-semibold text-slate-300 tabular-nums">
                           {a.frameCount} frames
@@ -144,6 +161,29 @@ export default function ArchivesPage() {
           </div>
         </Card>
       </div>
+
+      {deleteTarget && (
+        <ConfirmModal
+          title="Delete archive?"
+          confirmLabel="Delete archive"
+          onClose={() => setDeleteTarget(null)}
+          onConfirm={async () => {
+            await api.deleteArchive(deleteTarget._id);
+            setDeleteTarget(null);
+            // Step back a page if that was the last row on this one.
+            if (items.length === 1 && page > 1) setPage(page - 1);
+            else fetchPage();
+          }}
+        >
+          <p>
+            Permanently delete <strong className="text-white">{deleteTarget.name}</strong> and its{' '}
+            <strong className="text-white">{deleteTarget.frameCount}</strong> captured frames. This cannot be undone.
+          </p>
+          <p className="mt-2 text-slate-400">
+            Any JSON export you already downloaded is unaffected.
+          </p>
+        </ConfirmModal>
+      )}
     </div>
   );
 }

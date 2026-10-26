@@ -28,6 +28,22 @@ export function retentionCutoff(now: number = Date.now()): Date {
  * `capturedAt`, which is when the odds were originally recorded, so archiving
  * an old match would see its frames expire immediately.
  */
+export async function removeArchives(ids: unknown[]): Promise<PurgeResult> {
+  if (ids.length === 0) return { archivesDeleted: 0, framesDeleted: 0 };
+
+  // Frames first. Interrupted here, the archive still exists and a later sweep
+  // or retry finishes the job. The other order would leave frames with no
+  // archive pointing at them — invisible, and never collected, since every
+  // query starts from archived_matches.
+  const frames = await ArchivedFrame.deleteMany({ archiveId: { $in: ids } });
+  const archives = await ArchivedMatch.deleteMany({ _id: { $in: ids } });
+
+  return {
+    archivesDeleted: archives.deletedCount ?? 0,
+    framesDeleted: frames.deletedCount ?? 0,
+  };
+}
+
 export async function purgeExpiredArchives(now: number = Date.now()): Promise<PurgeResult> {
   const cutoff = retentionCutoff(now);
   let archivesDeleted = 0;
@@ -43,17 +59,10 @@ export async function purgeExpiredArchives(now: number = Date.now()): Promise<Pu
 
     if (expired.length === 0) break;
 
-    const ids = expired.map((a) => a._id);
+    const removed = await removeArchives(expired.map((a) => a._id));
 
-    // Frames first. Interrupted here, the next sweep still finds the archive
-    // and finishes the job. The other order would leave frames with no archive
-    // pointing at them — invisible, and never collected, since this query only
-    // ever looks at archived_matches.
-    const frames = await ArchivedFrame.deleteMany({ archiveId: { $in: ids } });
-    const archives = await ArchivedMatch.deleteMany({ _id: { $in: ids } });
-
-    framesDeleted += frames.deletedCount ?? 0;
-    archivesDeleted += archives.deletedCount ?? 0;
+    framesDeleted += removed.framesDeleted;
+    archivesDeleted += removed.archivesDeleted;
 
     for (const archive of expired) {
       console.log(`[ArchiveRetention] 🗑  Purged "${archive.name}" (archived before ${cutoff.toISOString()})`);

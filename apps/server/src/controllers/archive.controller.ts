@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import { ArchivedMatch } from '../models/ArchivedMatch.js';
 import { ArchivedFrame } from '../models/ArchivedFrame.js';
+import { removeArchives } from '../services/ArchiveRetentionService.js';
 
 const DEFAULT_PAGE_SIZE = 50;
 const MAX_PAGE_SIZE = 500;
@@ -90,6 +91,37 @@ export async function listArchiveFrames(req: Request, res: Response) {
   } catch (error: any) {
     console.error('[ArchiveController] Frames error:', error);
     res.status(500).json({ error: 'Failed to load frames' });
+  }
+}
+
+/**
+ * DELETE /api/archives/:id
+ *
+ * Remove an archive and its frames.
+ *
+ * No password, by request: the dashboard's match delete is guarded because it
+ * destroys a live match and its only copy of the data, whereas an archive is
+ * already a copy the user was handed a download of. The UI confirms first.
+ */
+export async function deleteArchive(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    if (!isValidId(id)) return res.status(404).json({ error: 'Archive not found' });
+
+    const archive = await ArchivedMatch.findById(id).select({ name: 1 }).lean();
+    if (!archive) return res.status(404).json({ error: 'Archive not found' });
+
+    const { framesDeleted } = await removeArchives([archive._id]);
+
+    console.log(`[ArchiveController] 🗑  Deleted archive "${archive.name}" (${framesDeleted} frames)`);
+
+    res.json({
+      message: `Deleted "${archive.name}" and ${framesDeleted} frame${framesDeleted === 1 ? '' : 's'}.`,
+      framesDeleted,
+    });
+  } catch (error: any) {
+    console.error('[ArchiveController] Delete error:', error);
+    res.status(500).json({ error: 'Failed to delete the archive' });
   }
 }
 

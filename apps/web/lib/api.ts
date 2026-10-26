@@ -224,6 +224,10 @@ export const api = {
   /** One archived match */
   getArchive: (id: string) => request<any>(`/api/archives/${id}`),
 
+  /** Delete an archive and its frames. No password — the UI confirms. */
+  deleteArchive: (id: string) =>
+    request<any>(`/api/archives/${id}`, { method: 'DELETE' }),
+
   /** Captured frames of an archived match, oldest first */
   getArchiveFrames: (id: string, params: { page?: number; limit?: number } = {}) => {
     const query = new URLSearchParams();

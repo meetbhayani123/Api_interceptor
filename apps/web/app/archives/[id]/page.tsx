@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/Card';
 import { Spinner } from '@/components/ui/Spinner';
 import { Pagination } from '@/components/ui/Pagination';
 import { FrameJumpToTime } from '@/components/archives/FrameJumpToTime';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 
 const PAGE_SIZE = 50;
 
@@ -33,6 +34,7 @@ function ArchiveDetail() {
   const at = searchParams.get('at') ?? '';
   const page = Math.max(1, Number.parseInt(searchParams.get('page') ?? '1', 10) || 1);
 
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [jumping, setJumping] = useState(false);
   const [jumpNotice, setJumpNotice] = useState<string | null>(null);
 
@@ -170,15 +172,28 @@ function ArchiveDetail() {
 
           {/* A plain link, not a fetch: the export can be large and the browser
               handles saving it far better than JavaScript would. */}
-          <a
-            href={api.archiveDownloadUrl(archiveId)}
-            className="shrink-0 inline-flex items-center justify-center gap-2 min-h-[48px] px-5 py-3 rounded-lg border border-accent/30 bg-accent/15 text-accent text-sm font-semibold hover:bg-accent/25 transition-colors focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
-          >
-            <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-            Download JSON
-          </a>
+          <div className="shrink-0 flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+            <a
+              href={api.archiveDownloadUrl(archiveId)}
+              className="inline-flex items-center justify-center gap-2 min-h-[48px] px-5 py-3 rounded-lg border border-accent/30 bg-accent/15 text-accent text-sm font-semibold hover:bg-accent/25 transition-colors focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none"
+            >
+              <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Download JSON
+            </a>
+
+            <button
+              type="button"
+              onClick={() => setConfirmingDelete(true)}
+              className="inline-flex items-center justify-center gap-2 min-h-[48px] px-5 py-3 rounded-lg border border-subtle/60 text-slate-300 text-sm font-semibold hover:bg-danger/20 hover:text-rose-200 hover:border-danger/40 transition-colors focus-visible:ring-2 focus-visible:ring-danger focus-visible:outline-none"
+            >
+              <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              Delete
+            </button>
+          </div>
         </Card>
 
         {archive?.finalBook && (
@@ -265,6 +280,27 @@ function ArchiveDetail() {
           </div>
         </Card>
       </div>
+
+      {confirmingDelete && (
+        <ConfirmModal
+          title="Delete archive?"
+          confirmLabel="Delete archive"
+          onClose={() => setConfirmingDelete(false)}
+          onConfirm={async () => {
+            await api.deleteArchive(archiveId);
+            // Nothing left to show on this page once it is gone.
+            router.push('/archives');
+          }}
+        >
+          <p>
+            Permanently delete <strong className="text-white">{archive?.name || 'this archive'}</strong> and its{' '}
+            <strong className="text-white">{total}</strong> captured frames. This cannot be undone.
+          </p>
+          <p className="mt-2 text-slate-400">
+            Any JSON export you already downloaded is unaffected.
+          </p>
+        </ConfirmModal>
+      )}
     </div>
   );
 }
