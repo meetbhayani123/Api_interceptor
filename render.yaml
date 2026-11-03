@@ -24,6 +24,10 @@ services:
       # older than this are never auto-started. Raise for longer formats.
       - key: MAX_POLL_HOURS
         value: 12
+      # Minutes after a match's startTime at which its book is saved
+      # automatically, tagged with the mark (e.g. "10 min").
+      - key: CHECKPOINT_MINUTES
+        value: 10
       # Archived matches are purged this many days after archiving. The JSON
       # export handed over at delete time is the copy that lasts.
       - key: ARCHIVE_RETENTION_DAYS

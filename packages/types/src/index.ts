@@ -9,6 +9,16 @@
  */
 export const DEFAULT_ARCHIVE_RETENTION_DAYS = 5;
 
+// ─── Automatic book checkpoint ───
+/**
+ * Minutes after a match's startTime at which its book is saved automatically.
+ *
+ * The figure recorded is the running total at that moment — everything
+ * captured since polling began, including the pre-start lead — not a book
+ * formed only during those minutes.
+ */
+export const DEFAULT_CHECKPOINT_MINUTES = 10;
+
 // ─── Odds Entry (legacy book locking) ───
 export interface IOddsEntry {
   timestamp: Date;
@@ -48,6 +58,8 @@ export interface IMatch {
   teamB?: string;
   startTime: Date;
   pollingStartedAt?: Date;
+  /** Set once the automatic book checkpoint has been recorded. */
+  checkpointSavedAt?: Date;
   /** Last poll that actually returned parseable odds. */
   lastSuccessfulPollAt?: Date;
   /** Failed polls since the last success; reset to 0 on any success. */
@@ -84,7 +96,7 @@ export interface IMatchDetail extends IMatch {
 }
 
 // ─── How a saved book came to exist ───
-export type SavedBookTrigger = 'manual' | 'auto';
+export type SavedBookTrigger = 'manual' | 'auto' | 'checkpoint';
 
 // ─── Saved Book (a point-in-time record of a match's book) ───
 export interface ISavedBook {
@@ -98,6 +110,8 @@ export interface ISavedBook {
   snapshotCount: number;
   trigger: SavedBookTrigger;
   reason?: string;
+  /** Short tag for a checkpoint save, e.g. "10 min". */
+  label?: string;
   savedAt: Date;
 }
 

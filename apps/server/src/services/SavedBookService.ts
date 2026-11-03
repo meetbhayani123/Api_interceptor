@@ -7,6 +7,8 @@ interface RecordBookOptions {
   trigger?: SavedBookTrigger;
   /** Context for an automatic save, shown in the history. */
   reason?: string;
+  /** Short tag for a checkpoint save, e.g. "10 min". */
+  label?: string;
 }
 
 /**
@@ -20,7 +22,7 @@ interface RecordBookOptions {
  */
 export async function recordBook(
   matchId: string,
-  { trigger = 'manual', reason }: RecordBookOptions = {}
+  { trigger = 'manual', reason, label }: RecordBookOptions = {}
 ): Promise<ISavedBook | null> {
   const match = await Match.findById(matchId)
     .select({ name: 1, teamA: 1, teamB: 1, finalBook: 1, totalSnapshotCount: 1 })
@@ -42,6 +44,7 @@ export async function recordBook(
     snapshotCount: match.totalSnapshotCount ?? 0,
     trigger,
     reason,
+    label,
     savedAt: new Date(),
   });
 

@@ -1,6 +1,7 @@
 import { Match } from '../models/Match.js';
 import { startPolling, stopPolling, isPolling } from './PollingService.js';
 import { config } from '../config/env.js';
+import { checkpointDueAt, recordCheckpoint } from './BookCheckpointService.js';
 
 /**
  * MatchScheduler — Automatically starts polling for matches ahead of their startTime.
@@ -30,10 +31,41 @@ let schedulerInterval: NodeJS.Timeout | null = null;
 let checkIntervalMs = DEFAULT_CHECK_INTERVAL_MS;
 const scheduledTimers = new Map<string, NodeJS.Timeout>();
 
+// Timers for the automatic book checkpoint, a fixed time after each start.
+const checkpointTimers = new Map<string, NodeJS.Timeout>();
+
 interface SchedulableMatch {
   _id: any;
   name: string;
   startTime: Date;
+  checkpointSavedAt?: Date | null;
+}
+
+/**
+ * Arrange the automatic book checkpoint for a match.
+ *
+ * Due in the future: arm a timer, so it lands close to the minute rather than
+ * whenever the next sweep happens to run. Already due: record it now, which is
+ * what catches a match whose timer was lost to a restart.
+ */
+function arrangeCheckpoint(match: SchedulableMatch, now: number): void {
+  const matchId = match._id.toString();
+
+  if (match.checkpointSavedAt || checkpointTimers.has(matchId)) return;
+
+  const dueIn = checkpointDueAt(match.startTime) - now;
+
+  if (dueIn <= 0) {
+    void recordCheckpoint(matchId);
+    return;
+  }
+
+  const timer = setTimeout(() => {
+    checkpointTimers.delete(matchId);
+    void recordCheckpoint(matchId);
+  }, dueIn);
+
+  checkpointTimers.set(matchId, timer);
 }
 
 /** The moment polling should begin for a match. */
@@ -79,6 +111,11 @@ function clearScheduledTimer(matchId: string): void {
  */
 async function evaluateMatch(match: SchedulableMatch, now: number): Promise<void> {
   const matchId = match._id.toString();
+
+  // First, and before the guard below: at its checkpoint a match is normally
+  // already polling, so arranging this after an isPolling() early return would
+  // mean the checkpoint was never set up for the matches that need it.
+  arrangeCheckpoint(match, now);
 
   if (isPolling(matchId)) return;
 
@@ -174,7 +211,7 @@ async function checkAndStartMatches(): Promise<void> {
       status: { $in: ['upcoming', 'running'] },
       startTime: { $gte: notBefore, $lte: notAfter },
     })
-      .select({ _id: 1, name: 1, startTime: 1, status: 1 })
+      .select({ _id: 1, name: 1, startTime: 1, status: 1, checkpointSavedAt: 1 })
       .lean();
 
     for (const match of candidates) {
@@ -200,7 +237,7 @@ async function checkAndStartMatches(): Promise<void> {
 export async function scheduleMatchById(matchId: string): Promise<void> {
   try {
     const match = await Match.findById(matchId)
-      .select({ _id: 1, name: 1, startTime: 1, status: 1 })
+      .select({ _id: 1, name: 1, startTime: 1, status: 1, checkpointSavedAt: 1 })
       .lean();
 
     if (!match || match.status === 'completed') return;
@@ -245,6 +282,11 @@ export function stopMatchScheduler(): void {
   for (const [matchId, timer] of scheduledTimers) {
     clearTimeout(timer);
     scheduledTimers.delete(matchId);
+  }
+
+  for (const [matchId, timer] of checkpointTimers) {
+    clearTimeout(timer);
+    checkpointTimers.delete(matchId);
   }
 
   console.log('[MatchScheduler] Stopped.');

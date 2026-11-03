@@ -18,10 +18,15 @@ export interface ISavedBook extends Document {
   teamB_PL: number;
   /** Frames captured at the moment of saving, for context. */
   snapshotCount: number;
-  /** 'manual' is a button press; 'auto' is the system recording a final book. */
-  trigger: 'manual' | 'auto';
+  /**
+   * 'manual' is a button press, 'auto' the system recording a final book,
+   * 'checkpoint' a scheduled save a fixed time into the match.
+   */
+  trigger: 'manual' | 'auto' | 'checkpoint';
   /** Why an automatic save happened, e.g. "Market closed". */
   reason?: string;
+  /** Short tag for a checkpoint, e.g. "10 min". */
+  label?: string;
   savedAt: Date;
 }
 
@@ -34,8 +39,9 @@ const savedBookSchema = new mongoose.Schema<ISavedBook>(
     teamA_PL: { type: Number, required: true },
     teamB_PL: { type: Number, required: true },
     snapshotCount: { type: Number, min: 0, default: 0 },
-    trigger: { type: String, enum: ['manual', 'auto'], default: 'manual' },
+    trigger: { type: String, enum: ['manual', 'auto', 'checkpoint'], default: 'manual' },
     reason: { type: String, required: false, trim: true },
+    label: { type: String, required: false, trim: true },
     savedAt: { type: Date, required: true, default: Date.now },
   },
   { collection: 'saved_books' }

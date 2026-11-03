@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { DEFAULT_ARCHIVE_RETENTION_DAYS } from '@repo/types';
+import { DEFAULT_ARCHIVE_RETENTION_DAYS, DEFAULT_CHECKPOINT_MINUTES } from '@repo/types';
 
 /**
  * Centralized environment configuration.
@@ -61,6 +61,10 @@ export const config = {
     process.env.ARCHIVE_RETENTION_DAYS ||
       envFile.ARCHIVE_RETENTION_DAYS ||
       DEFAULT_ARCHIVE_RETENTION_DAYS
+  ),
+  // Minutes after startTime at which a match's book is saved automatically.
+  checkpointMinutes: Number(
+    process.env.CHECKPOINT_MINUTES || envFile.CHECKPOINT_MINUTES || DEFAULT_CHECKPOINT_MINUTES
   ),
   maxConsecutiveFailures: Number(
     process.env.MAX_CONSECUTIVE_FAILURES || envFile.MAX_CONSECUTIVE_FAILURES || 20

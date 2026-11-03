@@ -27,6 +27,9 @@ const MatchSchema = new Schema<IMatchDocument>({
   pollingStartedAt: { type: Date, required: false },
   // Poll health. Without these a feed that breaks upstream fails silently:
   // the error is logged and the UI keeps showing the last good numbers.
+  // Claimed once, so the scheduled book checkpoint is recorded exactly once
+  // even if a timer and a sweep both reach the match.
+  checkpointSavedAt: { type: Date, required: false },
   lastSuccessfulPollAt: { type: Date, required: false },
   consecutiveFailures: { type: Number, min: 0, default: 0 },
   lastPollError: { type: String, required: false },

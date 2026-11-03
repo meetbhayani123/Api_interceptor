@@ -128,14 +128,27 @@ export default function SavedBookHistoryPage() {
                       </span>
 
                       <span
-                        className={`w-fit px-1.5 py-0.5 rounded text-[11px] font-semibold ${
-                          row.trigger === 'auto'
-                            ? 'bg-amber-500/15 text-amber-300'
-                            : 'bg-accent/15 text-accent'
+                        className={`w-fit px-1.5 py-0.5 rounded text-[11px] font-semibold whitespace-nowrap ${
+                          row.trigger === 'checkpoint'
+                            ? 'bg-profit/15 text-profit'
+                            : row.trigger === 'auto'
+                              ? 'bg-amber-500/15 text-amber-300'
+                              : 'bg-accent/15 text-accent'
                         }`}
-                        title={row.reason || (row.trigger === 'auto' ? 'Saved automatically' : 'Saved by hand')}
+                        title={
+                          row.reason ||
+                          (row.trigger === 'checkpoint'
+                            ? 'Saved automatically at a fixed point in the match'
+                            : row.trigger === 'auto'
+                              ? 'Saved automatically'
+                              : 'Saved by hand')
+                        }
                       >
-                        {row.trigger === 'auto' ? 'Auto' : 'Manual'}
+                        {row.trigger === 'checkpoint'
+                          ? row.label || 'Checkpoint'
+                          : row.trigger === 'auto'
+                            ? 'Auto'
+                            : 'Manual'}
                       </span>
 
                       <span className="flex sm:block items-center justify-between gap-2">
@@ -152,7 +165,7 @@ export default function SavedBookHistoryPage() {
                         </span>
                       </span>
 
-                      {row.reason && row.trigger === 'auto' && (
+                      {row.reason && row.trigger !== 'manual' && (
                         <span className="text-[11px] text-slate-500 sm:col-span-5 sm:-mt-1 break-words">
                           {row.reason}
                         </span>
